@@ -18,6 +18,10 @@ detector:
   half: true                         # fp16 autocast on GPU (torchvision backends)
   min_size: null                     # torchvision: short side after resize (null = default 800)
   max_detections: 300                # per frame; parking lots have many cars
+  tiles: null                        # e.g. [2, 2]: also detect on 2x2 overlapping enlarged crops (small objects)
+  tile_overlap: 0.2                  # overlap between neighbouring tiles, as a share of a tile
+  tile_merge_iou: 0.5                # NMS IoU when merging full-frame and tile boxes
+  max_images_per_pass: 10            # images per GPU forward pass (tiles count as images)
   # hf_model: PekingU/rtdetr_r50vd_coco_o365   # rtdetr only
   # input_size: 640                            # rtdetr only, square input side
   # COCO class name -> competition class. Birds are not targets. The original COCO label is kept
@@ -50,14 +54,10 @@ matching:                    # predicted tracks <-> ground-truth tracks (trainin
   min_share: 0.5             # a track takes the GT id it matches in >= 50% of its frames
 
 motion:
-  window_s: 2.0          # length of the window used to compute motion features
-  confirm_frames: 5      # consecutive "moving" frames before raising an alarm
-  prob_threshold: 0.5    # tuned on CV, never per video
+  method: rule           # rule (pillar 3.4) or model (3.5, later)
+  rule_theta: 2.0        # rule: moving once this many box heights away from the first position (tuned by eval_rule.py)
+  confirm_rows: 5        # consecutive "moving" detections before raising an alarm (tuned by eval_rule.py)
+  driver_inside: 0.7     # person boxes covered this much by a vehicle box never alarm
 
 validation:
-  n_folds: 4
-  group_by: source_dataset   # folds must not share scenes
-  clip_min_s: 60
-  clip_max_s: 180
-  mirror_prob: 0.5
-  seed: 42
+  n_folds: 3             # scene folds (scripts/scene_groups.py); folds never share a scene
