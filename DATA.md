@@ -45,6 +45,18 @@ All files sit flat in `data_dir` (no train/ and test/ subfolders). Train `video_
 - No audio. Test videos are 1–3 minute cuts and may start while something is already moving.
 - Mirrored videos are valid scenes. **Test scenes do not appear in training.**
 
+## Key facts from data_sample/SUMMARY.md
+
+- Train is almost all VIRAT: 87 of 90 videos (196 of 218 min); MEVA 2 videos, CDnet 1 (720x480).
+  Test has 6 low-resolution videos (3 at 720x480, 3 at 720x540; 720x540 never appears in train).
+- 5062 tracks, 2.3 M rows. Targets: 730 person + 671 vehicle, **0 animal** (animals only as 5 bonus).
+  Static: 1744 vehicle + 10 person. Disturbance (652) and other (1009) have no class and are tiny
+  (median box height 7 px). Driver: 26.
+- `moving` for a target is ~1 for almost its whole visible life (median 0.97): it means
+  "has started moving", not "is moving in this frame". Static/disturbance are always 0.
+- Target box height: min 20 px, median 64 px. Bonus median 18 px.
+- ~7% of alarms have t_move_start < 0.5 s (already moving when the video starts).
+
 ## Submission format
 
 ```

@@ -10,14 +10,24 @@ CLASSES = {"person", "vehicle", "animal"}
 def write_submission(alarms: pd.DataFrame, test_videos: pd.DataFrame, path: Path) -> pd.DataFrame:
     """One row per test video; alarms joined by ';'; a single ';' when there are none."""
     alarms = alarms.sort_values(["video_id", "t"])
-    joined = alarms.groupby("video_id").apply(
-        lambda g: ";".join(f"{r.t:.2f} {r.x:.4f} {r.y:.4f} {r['class']}" for _, r in g.iterrows())
-    )
+    text = [f"{t:.2f} {x:.4f} {y:.4f} {c}" for t, x, y, c in alarms[["t", "x", "y", "class"]].itertuples(index=False)]
+    joined = pd.Series(text, index=alarms["video_id"].to_numpy(), dtype=str).groupby(level=0).agg(";".join)
     sub = pd.DataFrame({"video_id": test_videos["video_id"]})
     sub["alarms"] = sub["video_id"].map(joined).fillna(";")
     validate_submission(sub, test_videos)
     sub.to_csv(path, index=False)
     return sub
+
+
+def parse_submission(sub: pd.DataFrame) -> pd.DataFrame:
+    """Inverse of write_submission: one row per alarm (video_id, t, x, y, class)."""
+    rows = []
+    for vid, cell in zip(sub["video_id"], sub["alarms"]):
+        for alarm in str(cell).split(";"):
+            if alarm.strip():
+                t, x, y, cls = alarm.split()
+                rows.append({"video_id": vid, "t": float(t), "x": float(x), "y": float(y), "class": cls})
+    return pd.DataFrame(rows, columns=["video_id", "t", "x", "y", "class"])
 
 
 def validate_submission(sub: pd.DataFrame, test_videos: pd.DataFrame) -> None:
