@@ -38,10 +38,8 @@ def main() -> None:
               "```", ""]
 
     tracks = load_csv(data_dir, "train_tracks")
-    # A few rows per role, so that every role appears in the sample.
-    sample = tracks.groupby("role", group_keys=False).apply(
-        lambda g: g.sample(min(len(g), args.rows_per_role), random_state=0)
-    )
+    # A few random rows per role, so that every role appears in the sample.
+    sample = tracks.sample(frac=1, random_state=0).groupby("role").head(args.rows_per_role)
     sample.sort_values(["video_id", "track_id", "frame"]).to_csv(out_dir / "train_tracks_sample.csv", index=False)
 
     per_track = tracks.groupby(["video_id", "track_id"]).agg(
