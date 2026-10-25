@@ -3,8 +3,8 @@
 # On Kaggle: data_dir = /kaggle/input/competitions/malto-who-moves, cache/output under /kaggle/working.
 
 paths:
-  data_dir: C:/Users/david/OneDrive/Desktop/MALTO CHALLENGE/data&code/malto-who-moves  # raw data, OUTSIDE this repo
-  cache_dir: C:/Users/david/whomoves-cache   # detections, tracks, features (parquet); outside OneDrive to avoid syncing
+  data_dir: C:/Users/david/OneDrive/Desktop/MALTO CHALLENGE/data_code/malto-who-moves  # raw data, OUTSIDE this repo
+  cache_dir: C:/Users/david/OneDrive/Desktop/MALTO CHALLENGE/data_code/cache  # detections, tracks, features (parquet), OUTSIDE this repo
   sample_dir: data_sample                                # small CSV heads, inside the repo
   output_dir: outputs                                    # submissions, figures
 
