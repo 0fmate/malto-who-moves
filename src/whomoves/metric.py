@@ -200,6 +200,8 @@ def score(alarms: pd.DataFrame, gt: GroundTruth, video_ids=None) -> dict:
         "f1": f1, "precision": precision, "recall": recall,
         "points": points, "n_targets": n_targets, "n_hits": n_hits, "fa_weighted": fa_weighted,
         "n_missed": int((~targets["hit"] & ~targets["bonus"]).sum()),
+        # Share of non-bonus targets hit: unlike `recall`, not inflated (and capped) by bonus points.
+        "target_recall": float((targets["hit"] & ~targets["bonus"]).sum() / n_targets) if n_targets else 0.0,
         "outcomes": details["outcome"].value_counts().to_dict(),
         "alarms": details, "targets": targets,
     }
