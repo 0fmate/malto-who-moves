@@ -23,3 +23,19 @@ Takeaways: big objects and parked cars are solved; **small moving people (< 50 p
 (1930 of 5800 target boxes here). Upscaling the input barely helps. To try: tiling the frame, motion blobs
 (background subtraction) as extra candidates, and a looser match criterion (IoU 0.5 is harsh on 15x30 px boxes,
 while the metric only needs the alarm point inside the box enlarged by 20%).
+
+## Tracking (pillar 2)
+
+2026-10-25, all 90 train videos, Faster R-CNN v2 detections, tracker settings in config.yaml (`run_track.py`).
+Predicted tracks matched to GT tracks by IoU >= 0.3 in >= 50% of their frames.
+
+| what | value |
+|---|---|
+| predicted tracks | 12146: 6362 match nothing (median 9 frames), 2850 target, 2598 static, 142 ambiguous, 117 bonus, 39 driver, 38 other |
+| GT targets with >= 1 predicted track | 1339/1401 = 95.6% (person 669/730, vehicle 670/671) |
+| pieces per found target | median 1, mean 2.1 (ID switches; cheap, since repeated alarms on a hit target are free) |
+| ceiling: perfect motion decision on these tracks | F1 0.991 (target recall 0.955, bonus hits push the official recall to the cap) |
+| no motion filter: one alarm per track | F1 0.211 (4167 alarms on parked cars, 1796 on unmatched tracks) |
+
+Takeaway: pillars 1-2 leave room for F1 ~0.99 on train; everything is decided by pillar 3 (0.21 -> 0.99).
+Of the 62 targets never tracked, 61 are people (sizes not checked yet).

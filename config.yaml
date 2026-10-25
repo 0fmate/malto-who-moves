@@ -36,8 +36,18 @@ detector:
     cow: animal
 
 tracker:
-  iou_threshold: 0.3
-  max_age_frames: 20
+  nms_iou: 0.7               # merge same-class duplicates (car + truck on one vehicle)
+  high_score: 0.5            # detections above this are matched first
+  new_track_score: 0.3       # minimum score to start a new track
+  iou_threshold: 0.3         # minimum IoU between predicted and detected box
+  center_gate: 0.7           # last round: max center distance, in box heights
+  max_age_frames: 20         # keep a lost track alive for 2 s (10 fps)
+  min_track_len: 3           # drop tracks with fewer detections
+  velocity_smoothing: 0.3    # weight of the newest velocity in the moving average
+
+matching:                    # predicted tracks <-> ground-truth tracks (training labels)
+  iou_threshold: 0.3         # looser than 0.5: small boxes are offset by a few pixels
+  min_share: 0.5             # a track takes the GT id it matches in >= 50% of its frames
 
 motion:
   window_s: 2.0          # length of the window used to compute motion features
