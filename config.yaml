@@ -9,10 +9,19 @@ paths:
   output_dir: outputs                                    # submissions, figures
 
 detector:
-  name: fasterrcnn_resnet50_fpn_v2   # torchvision, BSD license; to be compared with alternatives
+  # Options: fasterrcnn_resnet50_fpn_v2 (torchvision, BSD), fasterrcnn_mobilenet_v3_large_fpn (faster, weaker
+  # on small objects), rtdetr (HF transformers, Apache-2.0; see hf_model / input_size).
+  name: fasterrcnn_resnet50_fpn_v2
   score_threshold: 0.25              # keep low: far people are small and low-confidence
   frame_stride: 1                    # run on every N-th frame (videos are 10 fps)
-  # COCO class name -> competition class. Birds are not targets.
+  batch_size: 4                      # frames per GPU forward pass
+  half: true                         # fp16 autocast on GPU (torchvision backends)
+  min_size: null                     # torchvision: short side after resize (null = default 800)
+  max_detections: 300                # per frame; parking lots have many cars
+  # hf_model: PekingU/rtdetr_r50vd_coco_o365   # rtdetr only
+  # input_size: 640                            # rtdetr only, square input side
+  # COCO class name -> competition class. Birds are not targets. The original COCO label is kept
+  # in the "label" column, so mappings like bicycle -> person can be revisited without re-running.
   class_map:
     person: person
     bicycle: person        # a cyclist is a person
