@@ -1,18 +1,31 @@
-"""Validation that looks like the test set.
+"""Validation that looks like the test set: folds never share a scene.
 
-- Folds grouped by scene / source dataset: test scenes never appear in training.
-- Test-like clips: 1-3 minute cuts, some mirrored horizontally (x -> 1 - x), possibly
-  starting while something is already moving.
+Scenes come from scripts/scene_groups.py (automatic clustering of video backgrounds). Test scenes are
+not in the training set, so a model must always be judged on scenes it has not seen.
 """
+
+from pathlib import Path
 
 import pandas as pd
 
 
-def make_folds(videos: pd.DataFrame, n_folds: int, group_by: str, seed: int) -> pd.Series:
-    """Return a fold index per video_id, never splitting a group across folds."""
-    raise NotImplementedError
+def load_scenes(cache_dir: Path) -> pd.Series:
+    """video_id -> scene id, as computed by scripts/scene_groups.py."""
+    df = pd.read_csv(Path(cache_dir) / "scene_groups.csv", dtype={"video_id": str})
+    return df.set_index("video_id")["scene"]
 
 
-def make_clips(videos: pd.DataFrame, min_s: float, max_s: float, seed: int) -> pd.DataFrame:
-    """Return clips (video_id, t_start, t_end, mirrored) covering the training videos."""
-    raise NotImplementedError
+def make_folds(scenes: pd.Series, weights: pd.Series, n_folds: int) -> pd.Series:
+    """video_id -> fold, keeping each scene in one fold.
+
+    Greedy balancing: scenes sorted by total weight (e.g. number of targets), each one goes to the
+    fold that is currently lightest. Deterministic, so every experiment uses the same folds.
+    """
+    scene_weight = weights.groupby(scenes).sum().sort_values(ascending=False)
+    load = [0.0] * n_folds
+    scene_fold = {}
+    for scene, w in scene_weight.items():
+        fold = min(range(n_folds), key=lambda i: load[i])
+        scene_fold[scene] = fold
+        load[fold] += w
+    return scenes.map(scene_fold).rename("fold")

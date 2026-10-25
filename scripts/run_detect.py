@@ -1,7 +1,7 @@
 """Run the detector on the competition videos and cache one parquet file per video.
 
 Resumable: videos whose file already exists are skipped, so after an interruption just run it again.
-Output: <cache_dir>/detections/<detector>_s<stride>[_m<min_size>]/<video_id>.parquet (+ run_info.json)
+Output: <cache_dir>/detections/<detector>_s<stride>[_m<min_size>][_t<nx>x<ny>]/<video_id>.parquet (+ run_info.json)
 
 Usage:
   python scripts/run_detect.py                          # all 138 videos (train + test)
@@ -29,11 +29,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--split", choices=["train", "test", "all"], default="all")
     parser.add_argument("--videos", nargs="*", help="explicit video_ids (overrides --split)")
+    parser.add_argument("--add-videos", nargs="*", default=[], help="video_ids added to the --split list")
     parser.add_argument("--limit", type=int, help="only the first N videos")
     parser.add_argument("--max-frames", type=int, help="speed test: stop after N frames per video, save nothing")
     parser.add_argument("--detector", help="override config detector.name")
     parser.add_argument("--stride", type=int, help="override config detector.frame_stride")
     parser.add_argument("--min-size", type=int, help="override config detector.min_size (torchvision)")
+    parser.add_argument("--tiles", help="tile grid, e.g. 2x2 (overrides config detector.tiles)")
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--num-shards", type=int, default=1)
     args = parser.parse_args()
@@ -44,6 +46,8 @@ def main() -> None:
         det_cfg["name"] = args.detector
     if args.min_size:
         det_cfg["min_size"] = args.min_size
+    if args.tiles:
+        det_cfg["tiles"] = [int(n) for n in args.tiles.lower().split("x")]
     stride = args.stride or det_cfg.get("frame_stride", 1)
     data_dir = cfg["paths"]["data_dir"]
 
@@ -51,10 +55,11 @@ def main() -> None:
         video_ids = args.videos
     else:
         splits = ["train", "test"] if args.split == "all" else [args.split]
-        video_ids = [v for s in splits for v in load_csv(data_dir, f"{s}_videos")["video_id"]]
+        video_ids = args.add_videos + [v for s in splits for v in load_csv(data_dir, f"{s}_videos")["video_id"]]
     video_ids = video_ids[args.shard::args.num_shards][: args.limit]
 
-    run_name = f"{det_cfg['name']}_s{stride}" + (f"_m{det_cfg['min_size']}" if det_cfg.get("min_size") else "")
+    run_name = (f"{det_cfg['name']}_s{stride}" + (f"_m{det_cfg['min_size']}" if det_cfg.get("min_size") else "")
+                + (f"_t{det_cfg['tiles'][0]}x{det_cfg['tiles'][1]}" if det_cfg.get("tiles") else ""))
     out_dir = cfg["paths"]["cache_dir"] / "detections" / run_name
     save = args.max_frames is None
     if save:

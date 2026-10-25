@@ -11,6 +11,10 @@ Two backends, chosen with config["detector"]["name"]:
 COCO labels are mapped to person / vehicle / animal with config["detector"]["class_map"];
 anything else (birds included) is dropped.
 
+Optional tiling (config["detector"]["tiles"], e.g. [2, 2]): the detector also sees overlapping crops of the
+frame, each enlarged to its input size, so a 25 px person becomes ~50 px. Detectors trained on COCO are
+weak below ~32 px, and the test scenes are wide views with small objects.
+
 Output: one row per detection with video_id, frame, t, x, y, w, h (pixels, top-left, like
 train_tracks.csv), score, class (competition class) and label (original COCO label, e.g. "truck").
 """
@@ -31,6 +35,17 @@ TORCHVISION_MODELS = {
 }
 DEFAULT_RTDETR = "PekingU/rtdetr_r50vd_coco_o365"
 COLUMNS = ["video_id", "frame", "t", "x", "y", "w", "h", "score", "class", "label"]
+CLASS_INDEX = {"person": 0, "vehicle": 1, "animal": 2}
+EDGE_PX = 2  # a tile box this close to an inner tile edge is a cut object
+
+
+def tile_grid(width: int, height: int, nx: int, ny: int, overlap: float) -> list[tuple[int, int, int, int]]:
+    """nx x ny tiles (x0, y0, x1, y1) covering the frame, neighbours overlapping by `overlap` of a tile."""
+    tw = int(np.ceil(width / (nx - (nx - 1) * overlap)))
+    th = int(np.ceil(height / (ny - (ny - 1) * overlap)))
+    xs = [min(round(i * tw * (1 - overlap)), width - tw) for i in range(nx)]
+    ys = [min(round(j * th * (1 - overlap)), height - th) for j in range(ny)]
+    return [(x, y, x + tw, y + th) for y in ys for x in xs]
 
 
 class Detector:
@@ -49,6 +64,10 @@ class Detector:
         # COCO label id -> competition class (None = dropped).
         class_map = cfg_det["class_map"]
         self.label_to_class = {i: class_map.get(name) for i, name in self.labels.items()}
+        self.tiles = cfg_det.get("tiles")  # e.g. [2, 2]: columns x rows of tiles, or None
+        self.tile_overlap = float(cfg_det.get("tile_overlap", 0.2))
+        self.tile_merge_iou = float(cfg_det.get("tile_merge_iou", 0.5))
+        self.max_images = int(cfg_det.get("max_images_per_pass", 10))
 
     def _init_torchvision(self, c: dict) -> None:
         from torchvision.models import detection
@@ -89,10 +108,51 @@ class Detector:
         return [(r["boxes"].float().cpu().numpy(), r["scores"].float().cpu().numpy(), r["labels"].cpu().numpy())
                 for r in results]
 
+    def _predict_chunked(self, images: list[np.ndarray]) -> list[tuple]:
+        out = []
+        for i in range(0, len(images), self.max_images):
+            out += self._predict(images[i:i + self.max_images])
+        return out
+
+    def _predict_tiled(self, frames: list[np.ndarray]) -> list[tuple]:
+        """Full frame + overlapping tiles, each resized by the detector, so small objects get more pixels.
+
+        Tile boxes touching an inner tile edge are cut objects and are dropped (the full frame or a
+        neighbouring tile sees them whole); the rest are shifted back to frame coordinates and merged
+        with the full-frame boxes by class-aware NMS.
+        """
+        from torchvision.ops import batched_nms
+
+        h, w = frames[0].shape[:2]
+        crops = tile_grid(w, h, self.tiles[0], self.tiles[1], self.tile_overlap)
+        images = [img for f in frames for img in [f] + [np.ascontiguousarray(f[y0:y1, x0:x1]) for x0, y0, x1, y1 in crops]]
+        outs = self._predict_chunked(images)
+        per_frame = len(crops) + 1
+        results = []
+        for k in range(len(frames)):
+            parts = outs[k * per_frame:(k + 1) * per_frame]
+            boxes, scores, labels = [parts[0][0]], [parts[0][1]], [parts[0][2]]
+            for (x0, y0, x1, y1), (b, s, lab) in zip(crops, parts[1:]):
+                cut = (((x0 > 0) & (b[:, 0] <= EDGE_PX)) | ((y0 > 0) & (b[:, 1] <= EDGE_PX))
+                       | ((x1 < w) & (b[:, 2] >= x1 - x0 - EDGE_PX)) | ((y1 < h) & (b[:, 3] >= y1 - y0 - EDGE_PX)))
+                boxes.append(b[~cut] + np.array([x0, y0, x0, y0], dtype=b.dtype))
+                scores.append(s[~cut])
+                labels.append(lab[~cut])
+            b, s, lab = np.concatenate(boxes), np.concatenate(scores), np.concatenate(labels)
+            # NMS groups by competition class, so "car" and "truck" on one vehicle are merged too.
+            group = np.array([CLASS_INDEX.get(self.label_to_class.get(int(i)), -1) for i in lab])
+            keep = group >= 0
+            b, s, lab, group = b[keep], s[keep], lab[keep], group[keep]
+            idx = batched_nms(torch.from_numpy(b).float(), torch.from_numpy(s).float(),
+                              torch.from_numpy(group), self.tile_merge_iou).numpy()
+            results.append((b[idx], s[idx], lab[idx]))
+        return results
+
     def detect(self, frames: list[np.ndarray]) -> list[pd.DataFrame]:
         """Detect on a batch of RGB frames; one DataFrame (x, y, w, h, score, class, label) per frame."""
+        raw = self._predict_tiled(frames) if self.tiles else self._predict_chunked(frames)
         results = []
-        for boxes, scores, label_ids in self._predict(frames):
+        for boxes, scores, label_ids in raw:
             classes = [self.label_to_class.get(int(i)) for i in label_ids]
             keep = np.array([c is not None for c in classes], dtype=bool)
             b = boxes[keep] if len(boxes) else np.zeros((0, 4), np.float32)
