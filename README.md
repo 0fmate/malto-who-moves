@@ -5,7 +5,7 @@ Context, rules and conventions for working with Claude Code are in `CLAUDE.md`; 
 
 ## Setup
 
-1. The competition data is **outside** this folder, in `../data&code/malto-who-moves` (flat: videos + CSVs).
+1. The competition data is **outside** this folder, in `../data_code/malto-who-moves` (flat: videos + CSVs).
 2. Set `paths.data_dir` in `config.yaml` (or the env var `WHOMOVES_DATA_DIR`).
 3. `python -m venv .venv`, activate it, `pip install -r requirements.txt`.
 4. `python scripts/make_sample.py` → fills `data_sample/` with small excerpts and `SUMMARY.md`.
