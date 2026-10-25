@@ -1,5 +1,6 @@
 # Single source of truth for paths and parameters.
-# data_dir can be overridden with the env var WHOMOVES_DATA_DIR (on Kaggle: /kaggle/input/malto-who-moves).
+# Paths can be overridden with env vars WHOMOVES_DATA_DIR, WHOMOVES_CACHE_DIR, WHOMOVES_OUTPUT_DIR.
+# On Kaggle: data_dir = /kaggle/input/competitions/malto-who-moves, cache/output under /kaggle/working.
 
 paths:
   data_dir: C:/Users/david/OneDrive/Desktop/MALTO CHALLENGE/data&code/malto-who-moves  # raw data, OUTSIDE this repo

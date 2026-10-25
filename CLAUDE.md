@@ -45,7 +45,10 @@ rain, or people inside vehicles. A cyclist is a person. Birds are not targets.
 ## Data location and token hygiene (IMPORTANT)
 
 The raw data lives **outside this folder**. Its path is in `config.yaml` (`data_dir`),
-overridable with the env var `WHOMOVES_DATA_DIR` (on Kaggle: `/kaggle/input/malto-who-moves`).
+overridable with the env var `WHOMOVES_DATA_DIR` (on Kaggle: `/kaggle/input/competitions/malto-who-moves`,
+flat like the local copy: 138 videos + CSVs). `WHOMOVES_CACHE_DIR` and `WHOMOVES_OUTPUT_DIR` override
+the other paths (on Kaggle: under `/kaggle/working`, which is saved as the notebook output).
+Development GPU: Kaggle notebook, Tesla T4.
 
 - **Never read the raw data files directly** (no Read/cat/head on `train_tracks.csv`, no
   listing of video folders). Use `DATA.md` for the schema and `data_sample/` for real examples.
