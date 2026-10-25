@@ -1,0 +1,14 @@
+# Pin exact versions with `pip freeze > requirements.lock` once the environment works,
+# and use the same versions in the final Kaggle notebook.
+numpy
+pandas
+pyarrow
+pyyaml
+opencv-python
+torch
+torchvision
+scikit-learn
+lightgbm
+matplotlib
+tqdm
+pytest

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./data/**)",
+      "Read(./cache/**)",
+      "Read(**/*.mp4)",
+      "Read(**/train_tracks.csv)"
+    ]
+  }
+}

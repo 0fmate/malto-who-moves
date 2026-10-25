@@ -1,0 +1,43 @@
+# Single source of truth for paths and parameters.
+# data_dir can be overridden with the env var WHOMOVES_DATA_DIR (on Kaggle: /kaggle/input/malto-who-moves).
+
+paths:
+  data_dir: C:/Users/david/OneDrive/Desktop/MALTO CHALLENGE/data&code/malto-who-moves  # raw data, OUTSIDE this repo
+  cache_dir: C:/Users/david/whomoves-cache   # detections, tracks, features (parquet); outside OneDrive to avoid syncing
+  sample_dir: data_sample                                # small CSV heads, inside the repo
+  output_dir: outputs                                    # submissions, figures
+
+detector:
+  name: fasterrcnn_resnet50_fpn_v2   # torchvision, BSD license; to be compared with alternatives
+  score_threshold: 0.25              # keep low: far people are small and low-confidence
+  frame_stride: 1                    # run on every N-th frame (videos are 10 fps)
+  # COCO class name -> competition class. Birds are not targets.
+  class_map:
+    person: person
+    bicycle: person        # a cyclist is a person
+    car: vehicle
+    motorcycle: vehicle
+    bus: vehicle
+    truck: vehicle
+    cat: animal
+    dog: animal
+    horse: animal
+    sheep: animal
+    cow: animal
+
+tracker:
+  iou_threshold: 0.3
+  max_age_frames: 20
+
+motion:
+  window_s: 2.0          # length of the window used to compute motion features
+  confirm_frames: 5      # consecutive "moving" frames before raising an alarm
+  prob_threshold: 0.5    # tuned on CV, never per video
+
+validation:
+  n_folds: 4
+  group_by: source_dataset   # folds must not share scenes
+  clip_min_s: 60
+  clip_max_s: 180
+  mirror_prob: 0.5
+  seed: 42
