@@ -49,6 +49,8 @@ tracker:
   max_age_frames: 20         # keep a lost track alive for 2 s (10 fps)
   min_track_len: 3           # drop tracks with fewer detections
   velocity_smoothing: 0.3    # weight of the newest velocity in the moving average
+  low_iou_threshold: 0.3     # minimum IoU for low-score detections (< high_score) to extend a track
+  center_min_score: 0.0      # minimum score to match by center distance only
 
 matching:                    # predicted tracks <-> ground-truth tracks (training labels)
   iou_threshold: 0.3         # looser than 0.5: small boxes are offset by a few pixels

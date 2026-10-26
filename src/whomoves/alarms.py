@@ -28,12 +28,22 @@ def first_confirmed(feats: pd.DataFrame, moving: pd.Series, confirm_rows: int) -
     return df[confirmed].groupby(KEY, sort=False).head(1).drop(columns="_moving")
 
 
+def alarm_rows(feats: pd.DataFrame, moving: pd.Series, confirm_rows: int = 1,
+               driver_inside: float = 0.7) -> pd.DataFrame:
+    """The feature rows where alarms would be raised: one per moving track, drivers removed."""
+    rows = first_confirmed(feats, moving, confirm_rows)
+    return rows[~((rows["class"] == "person") & (rows["inside_vehicle"] >= driver_inside))]
+
+
 def make_alarms(feats: pd.DataFrame, moving: pd.Series, videos: pd.DataFrame, confirm_rows: int = 1,
                 driver_inside: float = 0.7) -> pd.DataFrame:
     """Alarms (video_id, t, x, y, class, track_id) from per-row moving decisions."""
-    rows = first_confirmed(feats, moving, confirm_rows)
-    rows = rows[~((rows["class"] == "person") & (rows["inside_vehicle"] >= driver_inside))]
-    rows = rows.merge(videos[["video_id", "width", "height", "duration_s"]], on="video_id")
+    return rows_to_alarms(alarm_rows(feats, moving, confirm_rows, driver_inside), videos)
+
+
+def rows_to_alarms(rows: pd.DataFrame, videos: pd.DataFrame) -> pd.DataFrame:
+    """One alarm per feature row, at the box center at that moment (index of `rows` is kept)."""
+    rows = rows.reset_index(names="_row").merge(videos[["video_id", "width", "height", "duration_s"]], on="video_id")
     return pd.DataFrame({
         "video_id": rows["video_id"],
         "t": rows["t"].clip(0, rows["duration_s"]),
@@ -41,4 +51,4 @@ def make_alarms(feats: pd.DataFrame, moving: pd.Series, videos: pd.DataFrame, co
         "y": ((rows["y"] + rows["h"] / 2) / rows["height"]).clip(0, 1),
         "class": rows["class"],
         "track_id": rows["track_id"],
-    }).reset_index(drop=True)
+    }).set_index(rows["_row"].rename(None))

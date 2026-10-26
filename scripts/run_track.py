@@ -76,12 +76,18 @@ def main() -> None:
     parser.add_argument("--videos", nargs="*")
     parser.add_argument("--no-report", action="store_true")
     parser.add_argument("--report-only", action="store_true", help="reuse the cached tracks, do not re-track")
+    parser.add_argument("--min-det-score", type=float,
+                        help="override tracker.min_det_score; outputs go to <det-run>_min<score%%> (use that name downstream)")
     args = parser.parse_args()
 
     cfg = load_config()
     data_dir, cache = cfg["paths"]["data_dir"], cfg["paths"]["cache_dir"]
     det_dir = cache / "detections" / args.det_run
-    out_dir = cache / "tracks" / args.det_run
+    run_name = args.det_run
+    if args.min_det_score is not None:
+        cfg["tracker"]["min_det_score"] = args.min_det_score
+        run_name += f"_min{round(args.min_det_score * 100):02d}"
+    out_dir = cache / "tracks" / run_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     gt_tracks = load_csv(data_dir, "train_tracks")
