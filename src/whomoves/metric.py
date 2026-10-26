@@ -176,11 +176,11 @@ def score(alarms: pd.DataFrame, gt: GroundTruth, video_ids=None) -> dict:
 
     hit = {vid: np.zeros(len(gt.videos[vid].targets), dtype=bool) for vid in video_ids}
     records = []
-    for vid, t, x, y, cls in alarms[["video_id", "t", "x", "y", "class"]].itertuples(index=False):
+    for idx, vid, t, x, y, cls in alarms[["video_id", "t", "x", "y", "class"]].itertuples(index=True):
         v = gt.videos[vid]
-        records.append({"video_id": vid, "t": t, "x": x, "y": y, "class": cls,
+        records.append({"alarm_index": idx, "video_id": vid, "t": t, "x": x, "y": y, "class": cls,
                         **_judge(v, hit[vid], t, x * v.width, y * v.height, cls)})
-    details = pd.DataFrame(records, columns=["video_id", "t", "x", "y", "class",
+    details = pd.DataFrame(records, columns=["alarm_index", "video_id", "t", "x", "y", "class",
                                              "outcome", "points", "fa_weight", "track_id", "bonus"])
 
     targets = pd.DataFrame([

@@ -117,10 +117,12 @@ def track_video(detections: pd.DataFrame, cfg: dict) -> pd.DataFrame:
         preds = np.array([t.predict(frame) for t in live]).reshape(-1, 4)
         track_cls = np.array([t.cls for t in live], dtype=object)
 
+        low_iou = cfg.get("low_iou_threshold", cfg["iou_threshold"])
+        center_min = cfg.get("center_min_score", 0.0)
         rounds = [
             (_cost_iou, lambda r: scores[r] >= cfg["high_score"], 1 - cfg["iou_threshold"]),
-            (_cost_iou, lambda r: scores[r] < cfg["high_score"], 1 - cfg["iou_threshold"]),
-            (_cost_center, lambda r: True, cfg["center_gate"]),
+            (_cost_iou, lambda r: scores[r] < cfg["high_score"], 1 - low_iou),
+            (_cost_center, lambda r: scores[r] >= center_min, cfg["center_gate"]),
         ]
         for cost_fn, select, max_cost in rounds:
             cand = [r for r in free_dets if select(r)]

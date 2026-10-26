@@ -132,3 +132,40 @@ Test: +21% detections, +30% boxes under 30 px. On the 10 train videos (same rule
 With tiles, low thresholds get much worse (theta 1.0: 0.713 vs 0.838): tile boxes add jitter and false
 detections, so the rule must stay strict. **tiled_v1 on the LB: 0.748** (rule_v1 0.711, +0.037): the test
 gap is at least partly small objects the full-frame detector misses. Now above the organizers' 0.720.
+
+## Learned motion decision (pillar 3.5) — did not beat the rule
+
+2026-10-27. Trained on full-frame features of the 90 train videos, 3 scene folds (out-of-fold scores);
+transfer checked on the tiled features of the 10 small-target videos (rule: 0.918 there).
+
+| approach | OOF F1 train | per fold | tiled 10 videos | notes |
+|---|---|---|---|---|
+| rule theta 2.0, confirm 5 | **0.903** | 0.921 / 0.877 / 0.871 | **0.918** | |
+| per-frame LightGBM on `moving`, alarm at first P >= thr for k rows | 0.825 (thr 0.9, k 5) | 0.797 / 0.882 / 0.848 | 0.760 | 131 alarms on parked cars vs 28 |
+| alarm filter: rule candidates (theta 1.5) + LightGBM on hit/false-alarm labels | 0.898 (keep P >= 0.96) | 0.911 / 0.885 / 0.864 | 0.870 | candidate recall 0.90 |
+
+Why the per-frame model fails: an alarm fires at the first frame a track looks like moving, so one
+high-P frame among thousands of a parked car is a false alarm; the training objective (per frame) is
+not the decision (first frame per track). The filter fixes the objective, but with 136 false candidates
+against 2004 good ones there is little to learn, and it transfers worse to tiled boxes (different jitter
+and scores). Most important features: track_range (per-frame model); first_border_dist, track_len_s,
+disp_future_2s, h_rel (filter). Decision: keep the rule, which is simpler, explainable and more robust;
+spend the remaining time on detection (pillar 1), the lever that moved the LB.
+
+## Run A: tiled 2x2 with detector threshold 0.05 (pillar 1) — no gain
+
+2026-10-27, Kaggle, same 58 videos. Re-tracked on the PC at several score cuts (tracker.min_det_score),
+rule grid on the 10 small-target train videos (best theta / confirm per row):
+
+| detections kept | low-score matching | best F1 | P | target recall |
+|---|---|---|---|---|
+| >= 0.05 | as before (IoU 0.3, center round for all) | 0.701 | 0.609 | 0.820 |
+| >= 0.10 | as before | 0.832 | 0.818 | 0.831 |
+| >= 0.15 | as before | 0.877 | 0.910 | 0.831 |
+| >= 0.10 | IoU >= 0.6, no center round below 0.25 | 0.898 | 0.929 | 0.855 |
+| >= 0.15 | IoU >= 0.6, no center round below 0.25 | 0.908 | 0.965 | 0.843 |
+| **>= 0.25** (= tiled_v1) | — | **0.918** | 0.935 | 0.884 |
+
+Low-confidence boxes do not find new targets (recall does not rise); they get attached to nearby tracks
+and make parked cars look like they move. Stricter matching limits the damage but never beats the 0.25 cut.
+Kept 0.25. The new tracker options (low_iou_threshold, center_min_score) default to the old behaviour.
