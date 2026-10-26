@@ -116,3 +116,19 @@ Full frame + 2x2 tiles with 20% overlap, merged by class-aware NMS. CPU check on
 videos (IoU >= 0.5): moving targets 30-50 px found 0.40 -> 0.60, < 30 px 0.59 -> 0.62; ~3.8x the time.
 Rule baseline (full frame) on the 10 train videos with the smallest targets (median 29-35 px, 15.6 min,
 172 targets): F1 0.906 at theta 2.0 / confirm 5. Next: same 10 videos + test with tiles on Kaggle.
+
+### Tiled detection on Kaggle (2026-10-27)
+
+Full frame + 2x2 tiles, 48 test + 10 small-target train videos, 2 T4: ~2.5 h (2.5 fps per GPU, ~5x slower).
+Test: +21% detections, +30% boxes under 30 px. On the 10 train videos (same rule, theta 2.0 / confirm 5):
+
+| | full frame | tiled 2x2 |
+|---|---|---|
+| targets with >= 1 track | 166/172 | 167/172 |
+| ceiling target recall | 0.959 | 0.971 |
+| rule F1 | 0.906 | **0.918** (P 0.935, target recall 0.884) |
+| test alarms | 241 | 299 (+24%) |
+
+With tiles, low thresholds get much worse (theta 1.0: 0.713 vs 0.838): tile boxes add jitter and false
+detections, so the rule must stay strict. **tiled_v1 on the LB: 0.748** (rule_v1 0.711, +0.037): the test
+gap is at least partly small objects the full-frame detector misses. Now above the organizers' 0.720.

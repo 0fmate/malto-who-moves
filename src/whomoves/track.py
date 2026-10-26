@@ -1,6 +1,7 @@
 """Link detections across frames into tracks (the camera is fixed).
 
 Method, a simplified ByteTrack:
+0. Detections below min_det_score are ignored (a low-threshold detection run can be re-tracked at any cut).
 1. Per frame, merge duplicate boxes of the same competition class (e.g. "car" and "truck" on the
    same vehicle) with a class-aware non-maximum suppression.
 2. Each live track predicts its box in the new frame with a constant-velocity model: the last box
@@ -92,7 +93,8 @@ def track_video(detections: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     Detections that are suppressed or never join a track are dropped. The column `class` becomes
     the track's majority class; the detection's own class is kept as `det_class`.
     """
-    det = detections.sort_values("frame", kind="stable").reset_index(drop=True)
+    det = detections[detections["score"] >= cfg.get("min_det_score", 0.0)]
+    det = det.sort_values("frame", kind="stable").reset_index(drop=True)
     frames = det["frame"].to_numpy()
     xyxy = det[["x", "y", "w", "h"]].to_numpy(float)
     xyxy[:, 2:] += xyxy[:, :2]

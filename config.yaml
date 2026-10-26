@@ -40,6 +40,7 @@ detector:
     cow: animal
 
 tracker:
+  min_det_score: 0.0         # ignore detections below this score (runs at 0.25 are unaffected)
   nms_iou: 0.7               # merge same-class duplicates (car + truck on one vehicle)
   high_score: 0.5            # detections above this are matched first
   new_track_score: 0.3       # minimum score to start a new track
