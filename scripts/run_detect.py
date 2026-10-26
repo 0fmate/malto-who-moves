@@ -1,7 +1,7 @@
 """Run the detector on the competition videos and cache one parquet file per video.
 
 Resumable: videos whose file already exists are skipped, so after an interruption just run it again.
-Output: <cache_dir>/detections/<detector>_s<stride>[_m<min_size>][_t<nx>x<ny>]/<video_id>.parquet (+ run_info.json)
+Output: <cache_dir>/detections/<detector>_s<stride>[_m<min_size>][_t<nx>x<ny>][_c<score %>]/<video_id>.parquet (+ run_info.json)
 
 Usage:
   python scripts/run_detect.py                          # all 138 videos (train + test)
@@ -36,6 +36,7 @@ def main() -> None:
     parser.add_argument("--stride", type=int, help="override config detector.frame_stride")
     parser.add_argument("--min-size", type=int, help="override config detector.min_size (torchvision)")
     parser.add_argument("--tiles", help="tile grid, e.g. 2x2 (overrides config detector.tiles)")
+    parser.add_argument("--score-threshold", type=float, help="override config detector.score_threshold")
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--num-shards", type=int, default=1)
     args = parser.parse_args()
@@ -48,6 +49,9 @@ def main() -> None:
         det_cfg["min_size"] = args.min_size
     if args.tiles:
         det_cfg["tiles"] = [int(n) for n in args.tiles.lower().split("x")]
+    default_threshold = det_cfg["score_threshold"]
+    if args.score_threshold is not None:
+        det_cfg["score_threshold"] = args.score_threshold
     stride = args.stride or det_cfg.get("frame_stride", 1)
     data_dir = cfg["paths"]["data_dir"]
 
@@ -59,7 +63,8 @@ def main() -> None:
     video_ids = video_ids[args.shard::args.num_shards][: args.limit]
 
     run_name = (f"{det_cfg['name']}_s{stride}" + (f"_m{det_cfg['min_size']}" if det_cfg.get("min_size") else "")
-                + (f"_t{det_cfg['tiles'][0]}x{det_cfg['tiles'][1]}" if det_cfg.get("tiles") else ""))
+                + (f"_t{det_cfg['tiles'][0]}x{det_cfg['tiles'][1]}" if det_cfg.get("tiles") else "")
+                + (f"_c{round(det_cfg['score_threshold'] * 100):02d}" if det_cfg["score_threshold"] != default_threshold else ""))
     out_dir = cfg["paths"]["cache_dir"] / "detections" / run_name
     save = args.max_frames is None
     if save:
