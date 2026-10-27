@@ -1,7 +1,7 @@
 """Run the detector on the competition videos and cache one parquet file per video.
 
 Resumable: videos whose file already exists are skipped, so after an interruption just run it again.
-Output: <cache_dir>/detections/<detector>_s<stride>[_m<min_size>][_t<nx>x<ny>][_c<score %>]/<video_id>.parquet (+ run_info.json)
+Output: <cache_dir>/detections/<detector>_s<stride>[_m<min_size>][_t<nx>x<ny>][_c<score %>][_mz][_x<shrink %>]/<video_id>.parquet (+ run_info.json)
 
 Usage:
   python scripts/run_detect.py                          # all 138 videos (train + test)
@@ -39,6 +39,7 @@ def main() -> None:
     parser.add_argument("--tiles", help="tile grid, e.g. 2x2 (overrides config detector.tiles)")
     parser.add_argument("--score-threshold", type=float, help="override config detector.score_threshold")
     parser.add_argument("--motion-zoom", action="store_true", help="detect only on motion crops (motion_zoom.py)")
+    parser.add_argument("--shrink", type=float, help="validation: shrink frames by this factor (detect.detect_video)")
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--num-shards", type=int, default=1)
     args = parser.parse_args()
@@ -67,12 +68,13 @@ def main() -> None:
     run_name = (f"{det_cfg['name']}_s{stride}" + (f"_m{det_cfg['min_size']}" if det_cfg.get("min_size") else "")
                 + (f"_t{det_cfg['tiles'][0]}x{det_cfg['tiles'][1]}" if det_cfg.get("tiles") else "")
                 + (f"_c{round(det_cfg['score_threshold'] * 100):02d}" if det_cfg["score_threshold"] != default_threshold else "")
-                + ("_mz" if args.motion_zoom else ""))
+                + ("_mz" if args.motion_zoom else "")
+                + (f"_x{round(args.shrink * 100)}" if args.shrink else ""))
     out_dir = cfg["paths"]["cache_dir"] / "detections" / run_name
     save = args.max_frames is None
     if save:
         out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / "run_info.json").write_text(json.dumps({**det_cfg, "frame_stride": stride}, indent=2))
+        (out_dir / "run_info.json").write_text(json.dumps({**det_cfg, "frame_stride": stride, "shrink": args.shrink}, indent=2))
 
     t0 = time.time()
     detector = Detector(det_cfg)
@@ -91,7 +93,8 @@ def main() -> None:
             df = detect_video_zoom(video_path(data_dir, vid), vid, detector, cfg["motion_zoom"], max_frames=args.max_frames)
         else:
             df = detect_video(video_path(data_dir, vid), vid, detector, stride=stride,
-                              batch_size=det_cfg.get("batch_size", 4), max_frames=args.max_frames)
+                              batch_size=det_cfg.get("batch_size", 4), max_frames=args.max_frames,
+                              shrink=args.shrink)
         dt = time.time() - t1
         n_frames = df.attrs["n_frames"]
         if save:

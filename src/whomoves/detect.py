@@ -166,12 +166,20 @@ class Detector:
 
 
 def detect_video(video_path: Path, video_id: str, detector: Detector, stride: int = 1,
-                 batch_size: int = 4, max_frames: int | None = None) -> pd.DataFrame:
-    """Run the detector on every `stride`-th frame of one video; one row per detection."""
+                 batch_size: int = 4, max_frames: int | None = None, shrink: float | None = None) -> pd.DataFrame:
+    """Run the detector on every `stride`-th frame of one video; one row per detection.
+
+    shrink (validation only): simulate a camera farther away. The frame is scaled down by `shrink` and
+    pasted on a canvas of the original size, so objects get fewer pixels AND a smaller share of each tile
+    (the detector resizes every image to a fixed size, so plain downscaling would not make objects smaller
+    for the network). Boxes are mapped back to original coordinates, so ground truth still matches.
+    """
     chunks, batch, meta = [], [], []
 
     def flush():
         for (frame_idx, t), dets in zip(meta, detector.detect(batch)):
+            if shrink:
+                dets[["x", "y", "w", "h"]] /= shrink
             chunks.append(dets.assign(video_id=video_id, frame=frame_idx, t=round(t, 3)))
         batch.clear()
         meta.clear()
@@ -180,6 +188,12 @@ def detect_video(video_path: Path, video_id: str, detector: Detector, stride: in
     for frame_idx, t, bgr in iter_frames(video_path, stride):
         if max_frames is not None and n_frames >= max_frames:
             break
+        if shrink:
+            small = cv2.resize(bgr, None, fx=shrink, fy=shrink, interpolation=cv2.INTER_AREA)
+            canvas = np.empty_like(bgr)
+            canvas[:] = small.mean(axis=(0, 1))
+            canvas[:small.shape[0], :small.shape[1]] = small
+            bgr = canvas
         batch.append(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
         meta.append((frame_idx, t))
         n_frames += 1
