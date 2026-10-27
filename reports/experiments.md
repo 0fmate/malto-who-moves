@@ -291,3 +291,23 @@ Also tried (no gain on clips): an OR with a 2 s speed rule; a lower theta for hi
 Submissions: tiled_p1.0_v2.5 (358 alarms), tiled_p0.75_v2.5 (381).
 Public LB: tiled_p1.0_v2.5 **0.766** (best so far; tiled_v1 0.748, theta 2.5 for all 0.719), tiled_p0.75_v2.5 0.757.
 Same direction as the clip validation: lowering the person threshold is what gains (+0.047 over theta 2.5 for all).
+
+## Smaller objects: shrunk training videos (validation of pillar 1 + 3 on test-like sizes)
+
+2026-10-27. Kaggle: the 10 small-target train videos with `run_detect.py --tiles 2x2 --shrink 0.6 / 0.45` (frame scaled
+down and pasted on a canvas of the original size, so objects get fewer pixels and a smaller share of each tile;
+boxes mapped back). GT targets reached by some track: 167/172 (x100), 166/172 (x60), 166/172 (x45): detection still
+finds them. Confirm 5; whole videos / test-like clips (strict):
+
+| scale | theta 2 all | p1.0 v2.5 | p0.75 v2.5 | p1.0 v2.0 |
+|---|---|---|---|---|
+| x100 | 0.918 / 0.905 | **0.947 / 0.923** | 0.942 / 0.922 | 0.937 / 0.917 |
+| x60 | 0.900 / 0.884 | 0.918 / 0.895 | **0.933 / 0.904** | 0.920 / 0.897 |
+| x45 | 0.882 / 0.873 | 0.904 / 0.887 | **0.916 / 0.899** | 0.903 / 0.892 |
+
+- Size alone costs ~0.03 (x45, clips), all in recall (0.853 -> 0.788); precision even rises. Tracks exist but
+  move less than the threshold before breaking.
+- The per-class threshold helps at every scale; at small scales person 0.75 is a bit better than 1.0
+  (LB: p1.0 0.766, p0.75 0.757, within noise).
+- Gap budget: clips ~-0.05, size ~-0.03 -> ~0.87-0.89 expected, LB 0.766: ~0.1 still unexplained by length
+  or size (scene content, re-encoding, how the test GT treats targets that barely move inside a cut).
