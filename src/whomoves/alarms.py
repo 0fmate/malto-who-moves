@@ -8,14 +8,21 @@ Policy:
 - earliness is not rewarded and false alarms cost double: prefer waiting to guessing.
 """
 
+import numpy as np
 import pandas as pd
 
 KEY = ["video_id", "track_id"]
 
 
-def rule_moving(feats: pd.DataFrame, theta: float) -> pd.Series:
-    """Hand-written rule: the track is now more than `theta` box heights away from where it first appeared."""
-    return feats["disp_from_start"] >= theta
+def rule_moving(feats: pd.DataFrame, theta: float, theta_person: float | None = None) -> pd.Series:
+    """Hand-written rule: the track is now more than `theta` box heights away from where it first appeared.
+
+    theta_person (optional) replaces theta for people. A person is a tall, narrow box, so a step is a
+    small move in box heights, and detectors jitter less on people than on half-hidden parked cars.
+    """
+    if theta_person is None:
+        return feats["disp_from_start"] >= theta
+    return feats["disp_from_start"] >= np.where(feats["class"] == "person", theta_person, theta)
 
 
 def first_confirmed(feats: pd.DataFrame, moving: pd.Series, confirm_rows: int) -> pd.DataFrame:

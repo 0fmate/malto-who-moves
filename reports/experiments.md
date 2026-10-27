@@ -255,3 +255,37 @@ precision-vs-recall signal. Threshold stays at 2.0 (CV); theta 3.0 is a candidat
 - Pixel floor (`disp >= theta * max(h, h_min)`, h_min 10-30 px): F1 within +-0.003 on both train sets. Dropped.
 - Camera shake (`scripts/camera_shake.py`, phase correlation vs the first frame): test cameras are steady
   (median video p95 shift 0.6 px, only 2/48 videos above 2 px). Not the cause of the test gap; no compensation.
+
+## Test-like clips: the validation was too kind; per-class threshold (pillar 3)
+
+2026-10-27. `scripts/eval_clips.py`: every train video cut into consecutive 35-120 s clips (like the test), our
+tracks cut too and features recomputed per clip; ground truth re-derived per clip (a target is a clip target if
+`moving` = 1 in some clip frame; one that only moves after the clip becomes static). "strict" keeps targets
+that moved before the clip and barely move inside it; "lenient" makes targets moving < 0.5 box heights neutral.
+
+| rule theta 2, confirm 5 | F1 | P | target recall |
+|---|---|---|---|
+| 90 train videos, whole | 0.903 | 0.910 | 0.874 |
+| same, 187 clips (median 64 s), strict | **0.855** | 0.921 | **0.780** |
+| same, clips, lenient | 0.881 | 0.922 | 0.824 |
+
+Target recall by how far the target moves inside its clip (box heights): <0.5: 0.03 (96), 0.5-1: 0.04 (52),
+1-2: 0.16 (142), 2-4: 0.76 (262), >=4: 0.95 (1165). 25% of clip targets are already moving at the clip start
+(recall 0.63 vs 0.83), mostly because many of them barely move inside the clip (parked after arriving, stopped).
+Short clips hide part of each trajectory, so a 2-box-height rule misses slow or briefly visible movers.
+
+Per-class threshold (`rule_moving(theta, theta_person)`), confirm 5:
+
+| person, vehicle | clips strict | clips lenient | clip folds 0/1/2 | 90 whole videos | 10 small-target clips (2x2) |
+|---|---|---|---|---|---|
+| 2.0, 2.0 (current) | 0.855 | 0.881 | 0.881 0.828 0.812 | 0.903 | 0.905 |
+| 1.0, 2.5 | **0.877** | **0.902** | 0.905 0.849 0.833 | **0.921** | **0.923** |
+| 0.75, 2.5 | 0.885 | 0.906 | 0.916 0.851 0.836 | 0.920 | 0.922 |
+| 1.5, 2.5 | 0.869 | 0.895 | 0.900 0.834 0.823 | 0.914 | 0.913 |
+
+Better on every view and every fold. Why: a step is a small move in box heights for a tall, narrow person
+box, while half-hidden parked cars jitter more. On train the extra person alarms are mostly duplicates (free)
+and new hits (person hits 605 -> 666, false alarms 19 -> 41). Risk: train has only 10 static people; a campus
+with people standing around could cost more. Test person alarms grow x1.52 (train x1.37).
+Also tried (no gain on clips): an OR with a 2 s speed rule; a lower theta for high-score tracks.
+Submissions: tiled_p1.0_v2.5 (358 alarms), tiled_p0.75_v2.5 (381).
