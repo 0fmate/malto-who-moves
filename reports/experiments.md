@@ -238,3 +238,20 @@ The zoom goes where things move, not to parked cars. Next: detector on the crops
   +532 tracks, almost all short (+4k rows), +6 small tracks that move >= 2 heights.
 - Why: on these videos the 2x2 tiles already reach the small movers the zoom reaches; the 5 missed targets
   are not found by the zoom either (occluded / in no crop). Zoom kept out of the final pipeline.
+
+## LB probes on the threshold, pixel floor, camera shake — no lever found
+
+2026-10-27.
+
+| tiled 2x2, confirm 5 | test alarms | public LB | 10 small-target train | 90 train (full frame) |
+|---|---|---|---|---|
+| theta 2.0 (tiled_v1) | 299 | 0.748 | 0.918 | **0.903** |
+| theta 2.5 | 255 | 0.719 | **0.921** | 0.902 |
+| theta 3.0 | 228 | **0.753** | 0.904 | 0.887 |
+
+Not monotonic: the public part (~14 videos) moves +-0.03 for a handful of alarms, so this is noise, not a
+precision-vs-recall signal. Threshold stays at 2.0 (CV); theta 3.0 is a candidate second final submission.
+
+- Pixel floor (`disp >= theta * max(h, h_min)`, h_min 10-30 px): F1 within +-0.003 on both train sets. Dropped.
+- Camera shake (`scripts/camera_shake.py`, phase correlation vs the first frame): test cameras are steady
+  (median video p95 shift 0.6 px, only 2/48 videos above 2 px). Not the cause of the test gap; no compensation.
