@@ -39,6 +39,18 @@ detector:
     sheep: animal
     cow: animal
 
+motion_zoom:                 # motion-guided zoom (motion_zoom.py, run_detect.py --motion-zoom)
+  history: 500               # MOG2: frames of memory of the background
+  var_threshold: 25          # MOG2: squared distance (in variances) for a pixel to be foreground
+  min_blob_area: 20          # px; smaller blobs are noise
+  max_blob_area_frac: 0.02   # blobs bigger than this share of the frame are light changes, not objects
+  crop_scale: 4              # crop side = crop_scale x the blob's longest side...
+  min_crop: 96               # ...but at least this many px...
+  max_crop: 320              # ...and at most this many px
+  max_crops: 6               # per frame, largest blobs first
+  stride: 2                  # zoom every N-th frame (MOG2 still sees every frame)
+  warmup_frames: 30          # let MOG2 learn the background first
+
 tracker:
   min_det_score: 0.0         # ignore detections below this score (runs at 0.25 are unaffected)
   nms_iou: 0.7               # merge same-class duplicates (car + truck on one vehicle)
@@ -51,6 +63,11 @@ tracker:
   velocity_smoothing: 0.3    # weight of the newest velocity in the moving average
   low_iou_threshold: 0.3     # minimum IoU for low-score detections (< high_score) to extend a track
   center_min_score: 0.0      # minimum score to match by center distance only
+  stitch: false              # join pieces of one object across longer gaps (stitch_tracks)
+  stitch_max_gap_s: 3.0      # longest gap between the end of a piece and the start of the next
+  stitch_gate: 1.0           # max distance from the predicted position, in box heights
+  stitch_max_size_ratio: 1.5 # max height ratio between the two pieces
+  stitch_velocity_rows: 10   # detections used to estimate the speed at the end of a piece
 
 matching:                    # predicted tracks <-> ground-truth tracks (training labels)
   iou_threshold: 0.3         # looser than 0.5: small boxes are offset by a few pixels

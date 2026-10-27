@@ -24,7 +24,7 @@ from whomoves.config import load_config  # noqa: E402
 from whomoves.io import load_csv  # noqa: E402
 from whomoves.match import match_tracks  # noqa: E402
 from whomoves.metric import GroundTruth, score  # noqa: E402
-from whomoves.track import track_video  # noqa: E402
+from whomoves.track import stitch_tracks, track_video  # noqa: E402
 
 
 def alarms_at(rows: pd.DataFrame, videos: pd.DataFrame) -> pd.DataFrame:
@@ -76,6 +76,7 @@ def main() -> None:
     parser.add_argument("--videos", nargs="*")
     parser.add_argument("--no-report", action="store_true")
     parser.add_argument("--report-only", action="store_true", help="reuse the cached tracks, do not re-track")
+    parser.add_argument("--stitch", action="store_true", help="enable tracker.stitch; outputs go to <run>_st")
     parser.add_argument("--min-det-score", type=float,
                         help="override tracker.min_det_score; outputs go to <det-run>_min<score%%> (use that name downstream)")
     args = parser.parse_args()
@@ -87,6 +88,9 @@ def main() -> None:
     if args.min_det_score is not None:
         cfg["tracker"]["min_det_score"] = args.min_det_score
         run_name += f"_min{round(args.min_det_score * 100):02d}"
+    if args.stitch:
+        cfg["tracker"]["stitch"] = True
+        run_name += "_st"
     out_dir = cache / "tracks" / run_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -105,6 +109,8 @@ def main() -> None:
     for path in paths:
         vid = path.stem
         tr = track_video(pd.read_parquet(path), cfg["tracker"])
+        if cfg["tracker"].get("stitch"):
+            tr = stitch_tracks(tr, cfg["tracker"])
         if vid in gt_by_video:
             tr = match_tracks(tr, gt_by_video[vid], **cfg["matching"])
         tr.to_parquet(out_dir / f"{vid}.parquet", index=False)

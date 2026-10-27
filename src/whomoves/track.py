@@ -151,3 +151,70 @@ def track_video(detections: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     majority = out.groupby("track_id")["det_class"].agg(lambda s: s.value_counts().index[0])
     out = out.assign(**{"class": out["track_id"].map(majority)})
     return out.reset_index(drop=True)
+
+
+def _track_ends(tracks: pd.DataFrame, velocity_rows: int) -> pd.DataFrame:
+    """Per track: first/last frame, box center and height at both ends, and end velocity (px/frame)."""
+    df = tracks.sort_values(["track_id", "frame"], kind="stable")
+    cx, cy = df["x"] + df["w"] / 2, df["y"] + df["h"] / 2
+    df = df.assign(cx=cx, cy=cy)
+    g = df.groupby("track_id")
+    first, last = g.head(1).set_index("track_id"), g.tail(1).set_index("track_id")
+    # Velocity over the last `velocity_rows` detections (or the whole track if shorter).
+    back = g.nth(-velocity_rows).set_index("track_id").reindex(last.index).fillna(first)
+    dt = (last["frame"] - back["frame"]).clip(lower=1)
+    return pd.DataFrame({
+        "cls": last["class"], "f0": first["frame"], "f1": last["frame"],
+        "x0": first["cx"], "y0": first["cy"], "h0": first["h"],
+        "x1": last["cx"], "y1": last["cy"], "h1": last["h"],
+        "vx": (last["cx"] - back["cx"]) / dt, "vy": (last["cy"] - back["cy"]) / dt,
+    })
+
+
+def stitch_tracks(tracks: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """Join track pieces of the same object across longer gaps than the tracker allows.
+
+    A track that ends and another that starts up to stitch_max_gap_s later are joined when the second
+    starts where the first, moving at its last speed, should be by then: within stitch_gate box heights,
+    same class, similar height. Pairs are joined cheapest first, each piece having at most one
+    predecessor and one successor. Joined pieces take the id of the first piece of their chain.
+
+    Why: the rule measures how far a track gets from where it first appeared, so a slow walker split
+    into short pieces never reaches the threshold. Repeated alarms on the same target are free, so the
+    split itself costs nothing; the lost distance does.
+    """
+    if tracks.empty:
+        return tracks
+    fps = cfg.get("fps", 10.0)
+    ends = _track_ends(tracks, cfg.get("stitch_velocity_rows", 10))
+    ids = ends.index.to_numpy()
+    a, b = np.meshgrid(np.arange(len(ids)), np.arange(len(ids)), indexing="ij")
+    a, b = a.ravel(), b.ravel()
+    e = ends.to_dict("list")
+    f0, f1 = np.array(e["f0"]), np.array(e["f1"])
+    gap = f0[b] - f1[a]
+    ok = (gap > 0) & (gap <= cfg["stitch_max_gap_s"] * fps) & (np.array(e["cls"])[a] == np.array(e["cls"])[b])
+    a, b, gap = a[ok], b[ok], gap[ok]
+    h1, h0 = np.array(e["h1"])[a], np.array(e["h0"])[b]
+    px = np.array(e["x1"])[a] + np.array(e["vx"])[a] * gap
+    py = np.array(e["y1"])[a] + np.array(e["vy"])[a] * gap
+    dist = np.hypot(px - np.array(e["x0"])[b], py - np.array(e["y0"])[b]) / np.maximum(np.maximum(h1, h0), 1.0)
+    ratio = np.maximum(h1, h0) / np.maximum(np.minimum(h1, h0), 1.0)
+    ok = (dist <= cfg["stitch_gate"]) & (ratio <= cfg["stitch_max_size_ratio"])
+    a, b, dist = a[ok], b[ok], dist[ok]
+
+    successor, has_pred = {}, set()
+    for i in np.argsort(dist, kind="stable"):
+        if a[i] in successor or b[i] in has_pred:
+            continue
+        successor[a[i]] = b[i]
+        has_pred.add(b[i])
+    new_id = {}
+    for start in range(len(ids)):
+        if start in has_pred:
+            continue
+        node = start
+        while node is not None:
+            new_id[ids[node]] = ids[start]
+            node = successor.get(node)
+    return tracks.assign(track_id=tracks["track_id"].map(new_id).fillna(tracks["track_id"]).astype(tracks["track_id"].dtype))

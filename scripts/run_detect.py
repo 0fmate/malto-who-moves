@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from whomoves.config import load_config  # noqa: E402
 from whomoves.detect import Detector, detect_video  # noqa: E402
 from whomoves.io import load_csv, video_path  # noqa: E402
+from whomoves.motion_zoom import detect_video_zoom  # noqa: E402
 
 
 def main() -> None:
@@ -37,6 +38,7 @@ def main() -> None:
     parser.add_argument("--min-size", type=int, help="override config detector.min_size (torchvision)")
     parser.add_argument("--tiles", help="tile grid, e.g. 2x2 (overrides config detector.tiles)")
     parser.add_argument("--score-threshold", type=float, help="override config detector.score_threshold")
+    parser.add_argument("--motion-zoom", action="store_true", help="detect only on motion crops (motion_zoom.py)")
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--num-shards", type=int, default=1)
     args = parser.parse_args()
@@ -64,7 +66,8 @@ def main() -> None:
 
     run_name = (f"{det_cfg['name']}_s{stride}" + (f"_m{det_cfg['min_size']}" if det_cfg.get("min_size") else "")
                 + (f"_t{det_cfg['tiles'][0]}x{det_cfg['tiles'][1]}" if det_cfg.get("tiles") else "")
-                + (f"_c{round(det_cfg['score_threshold'] * 100):02d}" if det_cfg["score_threshold"] != default_threshold else ""))
+                + (f"_c{round(det_cfg['score_threshold'] * 100):02d}" if det_cfg["score_threshold"] != default_threshold else "")
+                + ("_mz" if args.motion_zoom else ""))
     out_dir = cfg["paths"]["cache_dir"] / "detections" / run_name
     save = args.max_frames is None
     if save:
@@ -84,8 +87,11 @@ def main() -> None:
             skipped += 1
             continue
         t1 = time.time()
-        df = detect_video(video_path(data_dir, vid), vid, detector, stride=stride,
-                          batch_size=det_cfg.get("batch_size", 4), max_frames=args.max_frames)
+        if args.motion_zoom:
+            df = detect_video_zoom(video_path(data_dir, vid), vid, detector, cfg["motion_zoom"], max_frames=args.max_frames)
+        else:
+            df = detect_video(video_path(data_dir, vid), vid, detector, stride=stride,
+                              batch_size=det_cfg.get("batch_size", 4), max_frames=args.max_frames)
         dt = time.time() - t1
         n_frames = df.attrs["n_frames"]
         if save:
@@ -95,7 +101,8 @@ def main() -> None:
         done += 1
         total_frames += n_frames
         counts = df["class"].value_counts().to_dict()
-        print(f"{vid}: {n_frames} frames, {len(df)} dets ({len(df) / max(n_frames, 1):.1f}/frame) "
+        crops = f", {df.attrs['n_crops']} crops" if "n_crops" in df.attrs else ""
+        print(f"{vid}: {n_frames} frames{crops}, {len(df)} dets ({len(df) / max(n_frames, 1):.1f}/frame) "
               f"{counts}, {n_frames / dt:.1f} fps")
 
     elapsed = time.time() - t_start

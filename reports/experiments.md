@@ -169,3 +169,51 @@ rule grid on the 10 small-target train videos (best theta / confirm per row):
 Low-confidence boxes do not find new targets (recall does not rise); they get attached to nearby tracks
 and make parked cars look like they move. Stricter matching limits the damage but never beats the 0.25 cut.
 Kept 0.25. The new tracker options (low_iou_threshold, center_min_score) default to the old behaviour.
+
+## Run B: tiled 3x3, and fusion with 2x2 (pillar 1)
+
+2026-10-28, Kaggle, same 58 videos: 4.7 h on 2 T4 (1.4 fps per GPU; test alone ~3.7 h). 3x3 adds only
++5% boxes over 2x2 (+7% under 30 px). Fusion = all 2x2 boxes + 3x3 boxes shorter than H px, per-frame
+class-aware NMS (`fuse_detections.py`, no GPU). Rule on the 10 small-target train videos (best theta/confirm):
+
+| detections | F1 | P | target recall | test alarms |
+|---|---|---|---|---|
+| 2x2 (tiled_v1, LB 0.748) | **0.918** | 0.935 | 0.884 | 299 |
+| 3x3 | 0.865 | 0.872 | 0.849 | |
+| 2x2 + 3x3 boxes < 30 px | 0.894 | 0.869 | **0.901** | 339 |
+| 2x2 + 3x3 boxes < 40 px | 0.885 | 0.904 | 0.855 | |
+| 2x2 + 3x3 boxes < 60 px | 0.864 | 0.882 | 0.831 | |
+
+3x3 alone is worse: smaller tiles cut big parked cars more often, their boxes jump and they look like they
+move (1269 alarms on parked cars without a motion filter, vs 1004 with 2x2). Fusion with small boxes only
+finds the most targets but adds false alarms; LB probe **fused_h30: 0.748, identical to tiled_v1** (36 of 48
+videos differ, but on the ~14 public ones the extra alarms land on already-hit targets or neutral areas).
+Pillar 1 stays at 2x2.
+
+## Track stitching (pillar 2) — no gain
+
+2026-10-28. `stitch_tracks`: join a piece that ends with one that starts up to 3 s later where the first,
+at its last speed, should be (<= 1 box height), same class, height ratio <= 1.5. Idea: the rule measures distance
+from the first position, so a slow walker split in pieces never reaches the threshold.
+
+| | without | with stitching |
+|---|---|---|
+| 90 train videos, full frame (theta 2, confirm 5) | **0.903** | 0.901 |
+| 10 small-target videos, tiled 2x2 (best rule) | **0.918** | 0.900 |
+| pieces per found target | 2.1 | 1.9 |
+
+Few pieces get joined, and some wrong joins make still objects look like they move. Kept off (tracker.stitch: false).
+
+## Motion-guided zoom (pillar 1) — first check
+
+2026-10-28. `motion_zoom.py`: MOG2 background subtraction (shadows dropped), cleaned mask, blobs >= 20 px,
+up to 6 square crops (4x the blob, 96-320 px) every 2nd frame, enlarged by the detector. CPU check on 900
+frames of 3 train videos: MOG2 at 60-150 fps; share of annotated boxes whose center falls in a crop:
+
+| | < 30 px | 30-50 px | > 50 px |
+|---|---|---|---|
+| target, moving | **0.57** | **0.81** | **0.95** |
+| static | 0.19 | 0.33 | 0.32 |
+| disturbance | 0.15 | 0.27 | 0.41 |
+
+The zoom goes where things move, not to parked cars. Next: detector on the crops (Kaggle), fused with 2x2.

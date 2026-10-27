@@ -55,3 +55,20 @@ def test_low_score_detections_extend_but_do_not_start_tracks():
 def test_one_frame_blips_are_dropped():
     rows = [(f, 100, 50, 15, 30, 0.6, "person") for f in range(10)] + [(3, 700, 400, 20, 20, 0.9, "animal")]
     assert set(track_video(dets(*rows), CFG)["class"]) == {"person"}
+
+
+def test_stitching_joins_a_walker_lost_for_two_seconds():
+    from whomoves.track import stitch_tracks
+    rows = [(f, 100 + 3 * f, 50, 15, 30, 0.6, "person") for f in list(range(20)) + list(range(40, 60))]
+    pieces = track_video(dets(*rows), CFG)
+    assert pieces["track_id"].nunique() == 2
+    cfg = dict(CFG, stitch_max_gap_s=3.0, stitch_gate=1.0, stitch_max_size_ratio=1.5, stitch_velocity_rows=10)
+    assert stitch_tracks(pieces, cfg)["track_id"].nunique() == 1
+
+
+def test_stitching_keeps_two_parked_cars_apart():
+    from whomoves.track import stitch_tracks
+    rows = [(f, 100, 300, 120, 60, 0.9, "vehicle") for f in range(30)]
+    rows += [(f, 260, 300, 120, 60, 0.9, "vehicle") for f in range(50, 80)]  # next car, 160 px away
+    cfg = dict(CFG, stitch_max_gap_s=3.0, stitch_gate=1.0, stitch_max_size_ratio=1.5, stitch_velocity_rows=10)
+    assert stitch_tracks(track_video(dets(*rows), CFG), cfg)["track_id"].nunique() == 2
