@@ -217,3 +217,24 @@ frames of 3 train videos: MOG2 at 60-150 fps; share of annotated boxes whose cen
 | disturbance | 0.15 | 0.27 | 0.41 |
 
 The zoom goes where things move, not to parked cars. Next: detector on the crops (Kaggle), fused with 2x2.
+
+## Motion-guided zoom (pillar 1) — detector on the crops: no gain
+
+2026-10-27. Kaggle run `fasterrcnn_resnet50_fpn_v2_s1_mz` (test + 10 small-target train videos): 80,874 boxes on crops
+(median height 29 px person, 36 px vehicle). Fused with the 2x2 boxes (`fuse_detections.py`), tracked, rule theta 2 / confirm 5:
+
+| 10 small-target train videos | F1 | P | target recall | fa_static |
+|---|---|---|---|---|
+| 2x2 alone | **0.918** | 0.935 | 0.884 | 3 |
+| 2x2 + all zoom boxes | 0.843 | 0.784 | 0.895 | 17 |
+| 2x2 + zoom boxes < 40 px | 0.845 | | | |
+| 2x2 + only new zoom boxes (IoU <= 0.1 with every 2x2 box) | 0.913 | 0.92 | 0.890 | 0 |
+| 2x2 + only new zoom boxes < 40 px | 0.916 | 0.924 | 0.890 | 3 |
+
+- All zoom boxes: parked cars near a mover get a second, slightly different box every 2nd frame; the track
+  jumps between the two and the car seems to move (fa_static 3 -> 17).
+- Only new boxes (`--only-new 0.1`) removes that, but adds nothing: GT targets reached by some track stay
+  167/172 in both runs. On test the only-new submission has the same 299 alarms as tiled_v1 (3 change class);
+  +532 tracks, almost all short (+4k rows), +6 small tracks that move >= 2 heights.
+- Why: on these videos the 2x2 tiles already reach the small movers the zoom reaches; the 5 missed targets
+  are not found by the zoom either (occluded / in no crop). Zoom kept out of the final pipeline.
