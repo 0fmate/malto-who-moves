@@ -76,6 +76,7 @@ matching:                    # predicted tracks <-> ground-truth tracks (trainin
 motion:
   method: rule           # rule (pillar 3.4) or model (3.5, later)
   rule_theta: 2.0        # rule: moving once this many box heights away from the first position (tuned by eval_rule.py)
+  rule_theta_person: null  # if set, rule_theta for people only (eval_clips.py)
   confirm_rows: 5        # consecutive "moving" detections before raising an alarm (tuned by eval_rule.py)
   driver_inside: 0.7     # person boxes covered this much by a vehicle box never alarm
 

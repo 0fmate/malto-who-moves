@@ -7,7 +7,7 @@ Method from config["motion"]["method"] (or --method):
 
 Output: <output_dir>/submission_<name>.csv, validated against test_videos.csv.
 
-Usage: python scripts/make_submission.py --name rule_v1 [--theta 2.0] [--confirm 5] [--det-run ...]
+Usage: python scripts/make_submission.py --name rule_v1 [--theta 2.0] [--theta-person 1.0] [--confirm 5] [--det-run ...]
 """
 
 import argparse
@@ -31,6 +31,7 @@ def main() -> None:
     parser.add_argument("--name", required=True, help="suffix of the output file, e.g. rule_v1")
     parser.add_argument("--det-run", default="fasterrcnn_resnet50_fpn_v2_s1")
     parser.add_argument("--theta", type=float, help="override motion.rule_theta")
+    parser.add_argument("--theta-person", type=float, help="override motion.rule_theta_person")
     parser.add_argument("--confirm", type=int, help="override motion.confirm_rows")
     parser.add_argument("--method", choices=["rule", "model"], help="override motion.method")
     parser.add_argument("--model-run", default="fasterrcnn_resnet50_fpn_v2_s1", help="features the model was trained on")
@@ -39,6 +40,8 @@ def main() -> None:
     m = cfg["motion"]
     if args.theta is not None:
         m["rule_theta"] = args.theta
+    if args.theta_person is not None:
+        m["rule_theta_person"] = args.theta_person
     if args.confirm is not None:
         m["confirm_rows"] = args.confirm
 
@@ -51,7 +54,7 @@ def main() -> None:
 
     method = args.method or m["method"]
     if method == "rule":
-        alarms = make_alarms(feats, rule_moving(feats, m["rule_theta"]), test_videos, m["confirm_rows"], m["driver_inside"])
+        alarms = make_alarms(feats, rule_moving(feats, m["rule_theta"], m.get("rule_theta_person")), test_videos, m["confirm_rows"], m["driver_inside"])
     else:
         model_dir = cfg["paths"]["cache_dir"] / "models"
         policy = json.loads((model_dir / f"lgbm_{args.model_run}.json").read_text())
