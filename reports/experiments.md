@@ -289,3 +289,5 @@ and new hits (person hits 605 -> 666, false alarms 19 -> 41). Risk: train has on
 with people standing around could cost more. Test person alarms grow x1.52 (train x1.37).
 Also tried (no gain on clips): an OR with a 2 s speed rule; a lower theta for high-score tracks.
 Submissions: tiled_p1.0_v2.5 (358 alarms), tiled_p0.75_v2.5 (381).
+Public LB: tiled_p1.0_v2.5 **0.766** (best so far; tiled_v1 0.748, theta 2.5 for all 0.719), tiled_p0.75_v2.5 0.757.
+Same direction as the clip validation: lowering the person threshold is what gains (+0.047 over theta 2.5 for all).
