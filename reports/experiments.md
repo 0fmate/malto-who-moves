@@ -334,3 +334,26 @@ three scores fix T/D, and so overall precision P = F1 (1 + T/D) / 2 and recall R
 - Main finding: on test about 1 weighted alarm in 4 earns nothing (train: 1 in 13). Precision drops
   ~0.17, recall ~0.05-0.10. Test alarms have detection scores like train hits, so they sit on real
   objects: likely objects the test GT counts as not moving (weight 2), or alarms outside the time window.
+
+## Look-ahead filter: keep an alarm only if its track moves enough over its whole life
+
+2026-10-28. Offline we see the whole video, so for each alarm (still raised at the first confirmed row) we can
+check the track's maximum `disp_from_start` over its whole life. Filter: >= 2 box heights for people, >= 4 for
+vehicles. Test-like clips (strict / lenient):
+
+| K person / vehicle | alarms | strict F1 (P / R) | lenient F1 |
+|---|---|---|---|
+| none | 2240 | 0.877 (0.926 / 0.834) | 0.902 |
+| 2 / 3 | 1976 | 0.856 (0.938 / 0.788) | 0.882 |
+| 2 / 4 | 1918 | 0.841 (0.940 / 0.761) | 0.867 |
+| 3 / 5 | 1628 | 0.802 (0.948 / 0.694) | 0.828 |
+
+On train the weakly moving alarms are mostly hits (total < 3 heights: 211 hits, 23 false alarms, 243 duplicates),
+so the filter costs. Test alarms move less over their life (median 4.9 vs 5.8 heights; K 2/4 keeps 78% of test
+alarms vs 86% on train). Submission strong_k2_4 (279 alarms, 157 person, 122 vehicle).
+Expected from train: ~0.96 x 0.766 = 0.73. Public LB: **0.776** (best so far, +0.010 over the unfiltered 0.766).
+- Rough split (T/D ~0.96 from the class probes, weak alarms ~22% of D): the 79 weak alarms earn ~0.3-0.4
+  points each on test (train: ~0.9), the strong ones ~0.85. The weak movers explain a good part of the
+  precision gap: on test, "moved only a little" is often not a target.
+- Within LB noise on its own (+0.010), but 0.04 above the train-based expectation, consistent with the
+  precision estimate from the class probes.
