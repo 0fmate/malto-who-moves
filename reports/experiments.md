@@ -402,3 +402,6 @@ test run), merged into `fasterrcnn_resnet50_fpn_v2_s1_t2x2`, re-tracked and re-f
 | 1.00 / 3.0 | 0.854 | 0.859 | 0.880 | 0.879 |
 
 Submissions: p1.0_v2.5_k2_4_sm0.7 (307 alarms), p0.75_v2.5_k2_4_sm0.7 (317).
+Public LB: p1.0_v2.5_k2_4_sm0.7 **0.796** (best so far; unfiltered 0.766, drop-all-weak 0.776),
+p0.75_v2.5_k2_4_sm0.7 0.793. The filter gains +0.030 on the LB and +0.008 on tiled clips; the person threshold
+0.75 vs 1.0 is within LB noise (-0.003 LB, +0.007 clips).
