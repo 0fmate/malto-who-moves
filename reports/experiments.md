@@ -446,3 +446,21 @@ Evaluation: scripts/eval_zoom.py on t90 (2953 candidates, person 0.75 / vehicle 
   model overfits.
 - Written for a possible LB probe: submission_p0.75_v2.5_sm0.7_lgbm0.85_zoom0.6.csv (282 alarms).
   Verdict on CV: no real gain; keep only if the LB says otherwise (it would add a second detector pass to the notebook).
+
+## Robustness check: folds, scene bootstrap, public-LB noise (2026-10-28)
+
+scripts/robustness_check.py on t90 (187 clips, **only 6 scenes**, 1712 targets), person 0.75 / vehicle 2.5.
+
+| F1 strict | fold 0 | fold 1 | fold 2 | all |
+|---|---|---|---|---|
+| no filter | 0.913 | 0.779 | 0.797 | 0.855 |
+| hand gate | 0.916 | 0.820 | 0.803 | 0.869 |
+| hand gate AND model 0.85 | 0.921 | 0.832 | 0.817 | 0.879 |
+
+- Both filters help in every fold. Scene bootstrap (2000 draws): hand vs none +0.016 [5-95%: +0.002, +0.037];
+  model on top of hand +0.010 [+0.006, +0.015]; both > 0 in 98-99% of draws.
+- Public-like subsets (15 random clips, ~30% of 48 test videos): F1 std 0.032-0.040. A real +0.009 gain shows up
+  as a loss or tie on such a subset in 23% of draws; +0.015 in 18%. So LB gaps below ~0.02-0.03 are noise
+  (e.g. 0.796 vs 0.793), and the LB must not be used to pick between close variants.
+- Rule from here on: keep a change only if it gains >= ~0.005 on t90 and does not lose in any fold; the LB is only
+  a sanity check against large drops. The zoom filter (+0.002) is dropped by this rule whatever its LB.
