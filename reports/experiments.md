@@ -405,3 +405,26 @@ Submissions: p1.0_v2.5_k2_4_sm0.7 (307 alarms), p0.75_v2.5_k2_4_sm0.7 (317).
 Public LB: p1.0_v2.5_k2_4_sm0.7 **0.796** (best so far; unfiltered 0.766, drop-all-weak 0.776),
 p0.75_v2.5_k2_4_sm0.7 0.793. The filter gains +0.030 on the LB and +0.008 on tiled clips; the person threshold
 0.75 vs 1.0 is within LB noise (-0.003 LB, +0.007 clips).
+
+## Learned alarm filter on tiled test-like clips (scripts/learn_alarm_filter.py)
+
+2026-10-28. LightGBM (7 leaves, 200 trees) scores each rule alarm as "lands on a mover" vs false alarm, from
+the alarm-row features + whole-track measures; trained on t90 clips (strict labels), 3 scene folds,
+out-of-fold. t90 candidates (person 1.0): 2505 on movers, 207 false (53 weak).
+
+| person theta | filter | t90 strict | t90 lenient | s45 |
+|---|---|---|---|---|
+| 1.0 | hand gate (K 2/4, score_mean 0.7) | 0.861 | 0.881 | 0.885 |
+| 1.0 | model, P >= 0.95 | 0.875 | 0.899 | 0.881 |
+| 1.0 | model without h_rel, P >= 0.7 | 0.866 | 0.887 | 0.893 |
+| 0.75 | hand gate | 0.868 | 0.886 | 0.893 |
+| 0.75 | model, P >= 0.9 | 0.877 | 0.897 | 0.898 |
+| 0.75 | **hand gate AND model P >= 0.85** | **0.878** | **0.899** | 0.890 |
+
+- Most of the model's gain is box size (h_rel, 26% of gain; then first_border_dist, jump_share, score):
+  false alarms are tiny boxes (median h_rel 0.019 vs 0.057 for hits). Without h_rel it is only +0.005.
+- Alone, the model keeps 36 test alarms that the hand gate drops (weak + low score: the kind the LB showed to
+  be false), so it is combined with the gate (an alarm is dropped if either drops it). Plateau P 0.8-0.9.
+- Also checked: alarms near an earlier alarm of the same class (same place) are rarer on test (16%) than on
+  train clips (20%) and mostly hits there: no "same place" suppression.
+- Submission p0.75_v2.5_sm0.7_lgbm0.85 (297 alarms; the model drops 20 more than the gate: 6 weak, 14 strong).
