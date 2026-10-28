@@ -428,3 +428,21 @@ out-of-fold. t90 candidates (person 1.0): 2505 on movers, 207 false (53 weak).
 - Also checked: alarms near an earlier alarm of the same class (same place) are rarer on test (16%) than on
   train clips (20%) and mostly hits there: no "same place" suppression.
 - Submission p0.75_v2.5_sm0.7_lgbm0.85 (297 alarms; the model drops 20 more than the gate: 6 weak, 14 strong).
+
+## Zoom verification: second look at each candidate (2026-10-28)
+
+Idea: false alarms left are tiny boxes, and the detector is much better on 50-100 px objects, so re-detect each
+candidate on an enlarged crop (scripts/zoom_verify.py: square crop 4x the box side, min 64 px, resized to 384 px,
+score threshold 0.05; two crops per candidate, alarm row and middle track row; 6668 crops, 2.2 h on CPU).
+Evaluation: scripts/eval_zoom.py on t90 (2953 candidates, person 0.75 / vehicle 2.5).
+
+- The zoom score does separate them: median zoom_max 0.99 on hits, 0.86 on false alarms (0.79 on weak false alarms).
+  But 0.86 means most false alarms are **real objects** (a person, a car) found again up close: the error is about
+  motion (static object, track switch), not about detection. Only ~25% of false alarms have zoom_max < 0.6.
+- On top of the current best filter (hand gate AND model P >= 0.85, t90 0.878 / lenient 0.899):
+  drop when zoom_max < 0.6 -> 0.880 / 0.901 (+0.002, within noise); drops 15 test alarms (12 person, 3 vehicle, none weak).
+  Restricted to weak or small alarms: no gain (the base filter already drops those).
+- Zoom scores as extra inputs of the learned model: worse (0.874 at best); zoom_alarm gets 10% of the gain but the
+  model overfits.
+- Written for a possible LB probe: submission_p0.75_v2.5_sm0.7_lgbm0.85_zoom0.6.csv (282 alarms).
+  Verdict on CV: no real gain; keep only if the LB says otherwise (it would add a second detector pass to the notebook).
