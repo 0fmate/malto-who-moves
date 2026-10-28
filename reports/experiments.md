@@ -311,3 +311,26 @@ finds them. Confirm 5; whole videos / test-like clips (strict):
   (LB: p1.0 0.766, p0.75 0.757, within noise).
 - Gap budget: clips ~-0.05, size ~-0.03 -> ~0.87-0.89 expected, LB 0.766: ~0.1 still unexplained by length
   or size (scene content, re-encoding, how the test GT treats targets that barely move inside a cut).
+
+## Class-only LB probes: where does the public score go?
+
+2026-10-28. The tiled_p1.0_v2.5 submission (LB 0.766) split by class, nothing else changed:
+persons only (216 alarms) **0.576**, vehicles only (142) **0.442**. Ratios to the full score: 0.75 / 0.58
+(train clips: 0.71 / 0.61 strict, 0.62 / 0.69 small x45).
+
+Since F1 = 2 points / (D + T) (D = hits + weighted false alarms, T = targets, the same in all three runs), the
+three scores fix T/D, and so overall precision P = F1 (1 + T/D) / 2 and recall R = P / (T/D):
+
+| | T/D | precision | recall |
+|---|---|---|---|
+| train clips strict (true) | 1.11 | 0.926 | 0.834 |
+| train clips lenient (true) | 1.05 | 0.925 | 0.880 |
+| public LB (estimated) | ~0.92-1.02 | **~0.74-0.77** | ~0.74-0.80 |
+
+- The estimate needs the person share of D, known only through the alarm count (0.60); on train that
+  proxy moves T/D by only ~0.04, so P and R are robust. The per-class precision split is NOT robust
+  (on train the alarm-count proxy gives 0.79 / 1.06 instead of 0.93 / 0.91), so the 0.75 vs 0.58 ratios
+  cannot tell persons from vehicles: they also depend on the unknown class mix of the test targets.
+- Main finding: on test about 1 weighted alarm in 4 earns nothing (train: 1 in 13). Precision drops
+  ~0.17, recall ~0.05-0.10. Test alarms have detection scores like train hits, so they sit on real
+  objects: likely objects the test GT counts as not moving (weight 2), or alarms outside the time window.
