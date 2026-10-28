@@ -357,3 +357,26 @@ Expected from train: ~0.96 x 0.766 = 0.73. Public LB: **0.776** (best so far, +0
   precision gap: on test, "moved only a little" is often not a target.
 - Within LB noise on its own (+0.010), but 0.04 above the train-based expectation, consistent with the
   precision estimate from the class probes.
+
+## Look-ahead filter gated by motion coherence and detector confidence (scripts/sweep_lookahead.py)
+
+2026-10-28. Strong alarms (whole-track displacement >= K) are always kept; a weak one is kept only if its track
+passes coherence/confidence tests (straightness, largest single jump, box size jump, holding the displacement,
+mean detector score). 745 configs on test-like clips: c90 = 90 train videos (plain detector), s100/s60/s45 = the
+10 small-target videos with 2x2 tiles at full size / shrunk.
+
+Median measures of weak (K 2/4) alarms: train hits score_mean 0.88, train false alarms 0.58, **test weak 0.61**,
+test strong 0.92 (jump_share 0.21 / 0.31 / 0.26 / 0.11). The weak test alarms look like train false alarms.
+
+| filter | c90 strict | c90 lenient | s100 | s60 | s45 | test alarms | LB-weak dropped |
+|---|---|---|---|---|---|---|---|
+| none | 0.877 | 0.902 | 0.923 | - | 0.887 | 358 | 0 |
+| drop all weak (K 2/4) | 0.841 | 0.867 | 0.905 | 0.875 | 0.857 | 279 | 79 |
+| K 2/4, weak kept if score_mean >= 0.7 | **0.877** | **0.902** | **0.933** | 0.899 | **0.885** | 307 | 51 |
+| score_mean >= 0.7 on every alarm | 0.846 | 0.871 | 0.921 | 0.838 | 0.768 | 236 | 51 |
+
+- On weak alarms the confidence gate is free on train for thresholds 0.5-0.75 (flat), costs from 0.8 up.
+  Applied to every alarm it costs a lot (slow, small real movers have low scores too).
+- Coherence tests add nothing on top of the score (best pairs within +-0.002).
+- Submission p1.0_v2.5_k2_4_sm0.7 (307 alarms). Still to validate on the tiled detector for all 90 videos
+  (Kaggle run of 2026-10-28 night).
