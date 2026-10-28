@@ -12,7 +12,7 @@ Whole-track measures (track resampled every STEP_S seconds, centers and heights 
 - hold:       share of the track after the alarm that stays at least theta away from the start (low = goes back);
 - score_mean: mean detector score of the track.
 
-Data: test-like clips of the 90 train videos (plain detector), of the 10 small-target videos with 2x2 tiles at
+Data: test-like clips of the 90 train videos (plain detector and 2x2 tiles), of the 10 small-target videos with 2x2 tiles at
 full size and shrunk to 60% / 45%, and the 48 test videos (only how many alarms each filter keeps).
 Clip sets are cached as pickles in cache_dir. Output: <cache_dir>/sweep_lookahead.csv + a printed summary.
 
@@ -44,6 +44,7 @@ STEP_S = 0.5
 TILED = "fasterrcnn_resnet50_fpn_v2_s1_t2x2"
 CLIP_SETS = {  # name -> (detection run, cache file)
     "c90": ("fasterrcnn_resnet50_fpn_v2_s1", "clips90.pkl"),
+    "t90": (TILED, "clips90_t2x2.pkl"),
     "s100": (TILED, "clips_sub10_t2x2.pkl"),
     "s60": (TILED + "_x60", "clips_sub10_t2x2_x60.pkl"),
     "s45": (TILED + "_x45", "clips_sub10_t2x2_x45.pkl"),
@@ -157,8 +158,8 @@ def main() -> None:
     test = alarms_with_measures(ft[ft["video_id"].isin(test_videos["video_id"])], test_videos, driver)
     weak_lb = test["total"] < np.where(test["class"] == "person", 2.0, 4.0)  # the 79 alarms dropped on the LB
 
-    print("\nmedian measures: train c90 weak (K 2/4) hits vs false alarms, test weak vs strong")
-    a, v = sets["c90"]
+    print("\nmedian measures: train t90 weak (K 2/4) hits vs false alarms, test weak vs strong")
+    a, v = sets["t90"]
     out = score(a, v["strict"])["alarms"]
     a_sorted = a.sort_values("t", kind="stable").reset_index(drop=True)
     weak = a_sorted["total"] < np.where(a_sorted["class"] == "person", 2.0, 4.0)
@@ -179,8 +180,8 @@ def main() -> None:
         for name, (a, variants) in sets.items():
             keep = keep_mask(a, k, conds)
             r[name] = score(a[keep], variants["strict"])["f1"]
-            if name == "c90":
-                r["c90_len"] = score(a[keep], variants["lenient"])["f1"]
+            if name == "t90":
+                r["t90_len"] = score(a[keep], variants["lenient"])["f1"]
         keep = keep_mask(test, k, conds)
         r["test_kept"] = int(keep.sum())
         r["lb_weak_dropped"] = int((weak_lb & ~keep).sum())
@@ -189,12 +190,12 @@ def main() -> None:
             print(f"  {i} configs ({time.time() - t0:.0f} s)", flush=True)
 
     res = pd.DataFrame(rows)
-    res["train_mean"] = res[["c90", "s100", "s45"]].mean(axis=1)
+    res["train_mean"] = res[["t90", "s100", "s45"]].mean(axis=1)
     res.to_csv(cache / "sweep_lookahead.csv", index=False)
     base = res.iloc[0]
     print(f"\n{len(res)} configs in {(time.time() - t0) / 60:.1f} min -> {cache / 'sweep_lookahead.csv'}")
-    print(f"no filter: c90 {base['c90']:.3f}  s100 {base['s100']:.3f}  s45 {base['s45']:.3f}, test {base['test_kept']} alarms")
-    show = ["k", "conds", "c90", "c90_len", "s100", "s60", "s45", "train_mean", "test_kept", "lb_weak_dropped"]
+    print(f"no filter: c90 {base['c90']:.3f}  t90 {base['t90']:.3f}  s100 {base['s100']:.3f}  s45 {base['s45']:.3f}, test {base['test_kept']} alarms")
+    show = ["k", "conds", "c90", "t90", "t90_len", "s100", "s60", "s45", "train_mean", "test_kept", "lb_weak_dropped"]
     print("\nreference filters (drop all weak):")
     print(res[res["conds"] == "drop all weak"][show].round(3).to_string(index=False))
     good = res[res["lb_weak_dropped"] >= 40]

@@ -380,3 +380,25 @@ test strong 0.92 (jump_share 0.21 / 0.31 / 0.26 / 0.11). The weak test alarms lo
 - Coherence tests add nothing on top of the score (best pairs within +-0.002).
 - Submission p1.0_v2.5_k2_4_sm0.7 (307 alarms). Still to validate on the tiled detector for all 90 videos
   (Kaggle run of 2026-10-28 night).
+
+## Tiled detector on all 90 train videos: validation of the confidence-gated filter
+
+2026-10-28. Kaggle (2x T4): `run_detect.py --tiles 2x2` on the 80 train videos not done yet (same config as the
+test run), merged into `fasterrcnn_resnet50_fpn_v2_s1_t2x2`, re-tracked and re-featured (test alarms unchanged:
+358). Test-like clips of the 90 tiled videos: t90 (187 clips, 1717 targets).
+
+- No filter, rule p1.0 v2.5: t90 **0.853** strict / 0.872 lenient (plain detector c90: 0.877). Tiles add weak
+  false alarms: weak (K 2/4) alarms on t90 = 183 hits + 53 FA (c90: 170 + 22); their FA have score_mean 0.48.
+- Filter K 2/4 + score_mean >= 0.7: t90 **0.861** / 0.881 (+0.008 / +0.009). Flat for score_mean 0.65-0.75.
+  Dropping all weak alarms: 0.829.
+- With the filter, a lower person threshold is better again (it was not without it):
+
+| theta person / vehicle | t90 no filter | t90 filtered | t90 lenient filtered | s45 filtered |
+|---|---|---|---|---|
+| 0.75 / 2.0 | 0.844 | 0.865 | 0.883 | **0.903** |
+| **0.75 / 2.5** | 0.853 | **0.868** | **0.886** | 0.893 |
+| 1.00 / 2.5 | 0.853 | 0.861 | 0.881 | 0.885 |
+| 1.25 / 2.5 | 0.851 | 0.860 | 0.881 | 0.890 |
+| 1.00 / 3.0 | 0.854 | 0.859 | 0.880 | 0.879 |
+
+Submissions: p1.0_v2.5_k2_4_sm0.7 (307 alarms), p0.75_v2.5_k2_4_sm0.7 (317).
