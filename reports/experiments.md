@@ -566,3 +566,37 @@ gate alone). scripts/eval_lower_thresholds.py, hand gate AND out-of-fold model, 
 - Best gain +0.003, below the +0.005 rule, and fold 2 always loses. Lower vehicle thresholds help the small-target
   clips (s45) but lose on t90: the model does not separate jittery parked cars well enough.
 - Dropped. Final pipeline unchanged (person 0.75 / others 2.5, P >= 0.85).
+
+## Error budget and a shorter confirmation with the learned filter (2026-10-30)
+
+scripts/error_budget.py on t90 (person 0.75 / others 2.5, confirm 5, driver fix, hand & model P >= 0.85): F1 0.883,
+1464 hits, 28 wrong-class hits, fa_background 115, fa_static 13, fa_premotion 2, 274 missed targets. F1 if one kind
+were fixed: fa_background 0.914 (but the model gives them P median 0.98: they look like movers, mostly tiny and
+unannotated), wrong class 0.890 (24 person alarms on vehicle targets; dropping them loses more than it gains),
+missed persons 0.936, missed vehicles 0.918. Missed targets: 35 no track, 168 best fragment < theta (only 16 would
+pass by joining fragments, so track stitching is not worth it), **71 with a fragment >= theta but no alarm**: 60 of
+those never have 5 moving rows in a row (median 4).
+
+So the 5-row confirmation, chosen before the learned filter existed, now loses movers; the model may do its job.
+scripts/eval_lower_thresholds.py --confirm (hand & out-of-fold model, t90 strict / lenient / folds / s45 / test):
+
+| confirm | P >= 0.85 | P >= 0.9 | P >= 0.92 |
+|---|---|---|---|
+| 5 (current) | **0.883** (0.924/0.843/0.817, s45 0.893, test 311) | 0.882 | 0.879 |
+| 4 | 0.887 (fold 2 0.807) | 0.887 | 0.887 |
+| 3 | 0.881 | 0.882 (fold 2 0.793) | 0.882 |
+| **2** | 0.887 | **0.892** (0.929/0.860/0.821, s45 0.894, test 337) | 0.892 (0.926/0.863/0.827) |
+| 1 | 0.891 | 0.893 (0.929/0.864/0.822, s45 0.890) | 0.893 |
+
+scripts/eval_confirm_robust.py, paired on the same clips, gain vs confirm 5 / P 0.85:
+- per scene (the 3 scenes with real numbers of targets): confirm 2 / P 0.9 0.843 -> 0.860, 0.924 -> 0.929,
+  0.807 -> 0.812; confirm 1 also wins in all three.
+- bootstrap over scenes: confirm 2 +0.0088 [5%: +0.0046, 95%: +0.0150], > 0 in 98% of draws; confirm 1 +0.0128
+  [+0.0053, +0.0199] 98%; confirm 4 +0.0039, 85%.
+- fewer false alarms and more hits at the same time: fa_background 115 -> 102, fa_static 13 -> 9, hits 1464 -> 1472.
+- with the final model (trained on the 47-video subset, scored on clips of the other 43): 0.887 -> **0.896**.
+- Kept confirm 2 / P 0.9: passes the rule (+0.009, every fold up, s45 flat). Confirm 1 is +0.003 more, below the
+  rule and with s45 down and more wrong-class hits, so the smaller change is kept. Confirm 3 being worse than 2 and 4
+  is the fold-2 scene; the bootstrap does not depend on it.
+- final_pipeline.py writes it as submission_final_lgbm_c2.csv (= submission.csv); lgbm (confirm 5) and hand are
+  unchanged, byte-identical to the submitted files. Local file: submission_fix_p0.75_c2_p0.9_lgbm47.csv (333 alarms).

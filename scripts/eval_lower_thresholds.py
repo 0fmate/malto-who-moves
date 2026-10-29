@@ -5,7 +5,9 @@ jittery parked cars and still people. Without the learned filter vehicle 2.0 los
 the model may now remove those extra false alarms. Each setting: candidates, out-of-fold model (3 scene folds),
 keep = hand gate AND P >= thr. Compared on t90 (strict / lenient / per fold) and s45, plus test alarms kept.
 
-Usage: python scripts/eval_lower_thresholds.py
+--confirm: compare shorter confirmations (consecutive moving rows) instead.
+
+Usage: python scripts/eval_lower_thresholds.py [--confirm]
 """
 
 import pickle
@@ -27,8 +29,11 @@ from whomoves.io import load_csv  # noqa: E402
 from whomoves.metric import score  # noqa: E402
 from whomoves.validation import load_scenes, make_folds  # noqa: E402
 
-SETTINGS = [(0.75, 2.5), (0.75, 2.0), (0.75, 1.5), (0.6, 2.5), (0.6, 2.0)]  # (person, others) box heights
 P_GRID = [0.8, 0.85, 0.9]
+SETTINGS = [(0.75, 2.5, 5), (0.75, 2.0, 5), (0.75, 1.5, 5), (0.6, 2.5, 5), (0.6, 2.0, 5)]  # (person, others, confirm)
+if "--confirm" in sys.argv:  # shorter confirmation: 60 missed t90 targets have a track that moves enough but < 5 rows
+    SETTINGS = [(0.75, 2.5, k) for k in [5, 4, 3, 2, 1]]
+    P_GRID = [0.85, 0.9, 0.92, 0.94, 0.96]
 
 
 def main() -> None:
@@ -47,7 +52,8 @@ def main() -> None:
         return ~r["weak"] | (r["score_mean"] >= 0.7)
 
     print("hand & model, F1: t90 strict | lenient | folds | s45 | test alarms")
-    for tp, to in SETTINGS:
+    for tp, to, confirm in SETTINGS:
+        sw.CONFIRM = confirm  # read by L.candidate_rows
         data = {}
         for n, c in sets.items():
             r = L.candidate_rows(c["feats"], tp, driver, True, to)
@@ -68,7 +74,7 @@ def main() -> None:
         full = lgb.LGBMClassifier(**L.PARAMS).fit(L.inputs(rows[y.notna()]), y[y.notna()].astype(int))
         t["p"] = full.predict_proba(L.inputs(t))[:, 1]
         cf = c["videos"]["video_id"].str.split("@").str[0].map(folds)
-        print(f"  person {tp} / others {to}: {len(rows)} t90 candidates ({int((y == 0).sum())} false), "
+        print(f"  person {tp} / others {to} / confirm {confirm}: {len(rows)} t90 candidates ({int((y == 0).sum())} false), "
               f"{len(t)} test candidates")
         for thr in P_GRID:
             def f1(n, var="strict", fold=None):
