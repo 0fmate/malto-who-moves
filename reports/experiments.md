@@ -602,3 +602,31 @@ scripts/eval_confirm_robust.py, paired on the same clips, gain vs confirm 5 / P 
   unchanged, byte-identical to the submitted files. Local file: submission_fix_p0.75_c2_p0.9_lgbm47.csv (333 alarms).
 - **Public LB: submission_fix_p0.75_c2_p0.9_lgbm47 0.83714** (confirm 5 version 0.81167: +0.025, CV said +0.009;
   the extra is public-subset noise, a few public alarms). Final selections: lgbm_c2 and lgbm (confirm 5).
+
+## After confirm 2: hand gate still needed? second chance per track? (2026-10-30)
+
+Both follow the idea of the confirm-2 gain (loosen what was written before the learned filter). Person 0.75 /
+others 2.5, confirm 2, driver fix, out-of-fold model; current method = hand & P >= 0.9 (t90 0.892).
+
+**Without the hand gate** (scripts/eval_no_hand.py): P alone, best 0.885 at P >= 0.92 (folds 0.930/0.833/0.826),
+test alarms 337 -> 398. The gate drops 554 t90 candidates (448 on movers, mostly free duplicates, 104 false) with
+P median 0.96, so the model would keep them. Bootstrap over scenes: P alone wins in 13-32% of draws. **Dropped:
+the gate stays** (on the test it removes ~65 weak low-score alarms that the model would let through).
+
+**Second chance** (scripts/eval_second_chance.py): each track also gets candidate rows at the first moving row
+1/2/4 (or 2/4/8, or 1..8) s after its first one; model trained on all rows; alarm at the first row of the track that
+passes. Whole-track measures are the same at every row, only row features and `hold` change.
+
+| offsets | best t90 (P) | folds | s45 | test alarms (from later chances) | bootstrap vs current |
+|---|---|---|---|---|---|
+| [0] (current) | 0.892 (0.9) | 0.929/0.860/0.821 | 0.894 | 337 | |
+| [0,1,2,4] | 0.895 (0.94) | 0.924/0.869/0.844 | 0.884 | 327 (6) | +0.006 [-0.005, +0.021], 75% |
+| [0,2,4,8] | 0.893 (0.94) | 0.916/0.869/0.858 | 0.878 | 326 (5) | +0.008 [-0.013, +0.041], 65% |
+| [0,1,...,8] | 0.894 (0.96) | 0.916/0.877/0.854 | 0.867 | 309 (5) | +0.007 [-0.013, +0.031], 64% |
+
+- Gain <= +0.003 on t90, fold 0 and s45 always lose, bootstrap 5% quantile negative: **dropped**.
+- Why it does not help: the decisive inputs are whole-track measures, so a track rejected at its first row is
+  mostly rejected later too; on the test only 5-8 alarms would come from later chances.
+- Lesson for the report: loosening the rule helps only where it lets in candidates the model can judge
+  (short fragments of real movers: confirm 2); not where it lets in what the model cannot tell apart (lower theta:
+  jittery parked cars; no hand gate: weak low-score test tracks) or where the model has nothing new to see.
