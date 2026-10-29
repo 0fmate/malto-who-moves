@@ -546,3 +546,6 @@ confirmed moving row outside vehicle boxes; a real driver stays inside and still
 - Submissions (from final_pipeline.py on cached features, model on the 47-video subset):
   submission_fix_p1.0_hand.csv (319 alarms; vs the 0.796 one: 19 added, 7 moved later) and
   submission_fix_p0.75_lgbm47.csv (309 alarms).
+- **Public LB (2026-10-30): submission_fix_p0.75_lgbm47 0.81167, submission_fix_p1.0_hand 0.80430**
+  (before the fix: lgbm 0.79407, hand 0.79566). Both up by about +0.01 to +0.017, the same order as on CV, and the
+  learned filter is now ahead on the LB too, as on CV. These two are the final selections.
