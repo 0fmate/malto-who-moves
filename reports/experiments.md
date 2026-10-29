@@ -464,3 +464,17 @@ scripts/robustness_check.py on t90 (187 clips, **only 6 scenes**, 1712 targets),
   (e.g. 0.796 vs 0.793), and the LB must not be used to pick between close variants.
 - Rule from here on: keep a change only if it gains >= ~0.005 on t90 and does not lose in any fold; the LB is only
   a sanity check against large drops. The zoom filter (+0.002) is dropped by this rule whatever its LB.
+
+## LB of the learned filter and of the zoom filter (2026-10-29)
+
+| submission | alarms | t90 CV | public LB |
+|---|---|---|---|
+| p1.0_v2.5_k2_4_sm0.7 (hand gate) | 307 | 0.861 | 0.796 |
+| p0.75_v2.5_k2_4_sm0.7 (hand gate) | 317 | 0.868 | 0.793 |
+| p0.75_v2.5_sm0.7_lgbm0.85 (hand gate AND model) | 297 | 0.879 | 0.794 |
+| p0.75_v2.5_sm0.7_lgbm0.85_zoom0.6 (+ drop zoom_max < 0.6) | 282 | 0.880 | 0.776 |
+
+- The model: +0.001 on the LB over the same hand gate, within LB noise (std ~0.035); kept for its CV gain.
+- Zoom: -0.018 from dropping 15 alarms: on the public part those were mostly real movers. Small test objects
+  enlarged from few pixels are not found again by the detector, even when they are real. Dropped (it also failed
+  the CV rule).
