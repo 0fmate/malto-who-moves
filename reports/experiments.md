@@ -499,3 +499,20 @@ barely seen in training; they get 22 of the 297 alarms, about the same rate as t
 
 Time budget found while planning the final notebook: tiled 2x2 runs at ~5 fps on 2 T4; test is 36.5k frames (~2 h),
 train 127k frames (~7 h). Re-detecting all train videos to fit the learned filter does not fit in 9 h together with test.
+
+## Final pipeline and the 9 h limit (2026-10-29)
+
+scripts/final_pipeline.py: after tiled detection on test + a training subset, tracks, features, the hand-gate
+submission (person 1.0) and the hand gate AND learned filter submission (person 0.75, model fit on clips of the subset).
+Subset = train videos sorted by id up to 6000 s (47 videos, 5995 s), so that detection fits in the GPU limit.
+
+| model trained on | t90 F1 (out-of-fold) | folds | test alarms (vs the 297 of the full model) |
+|---|---|---|---|
+| hand gate only | 0.868 | 0.916 / 0.820 / 0.797 | 317 |
+| 41 videos (5000 s) | 0.872 | 0.917 / 0.823 / 0.812 | 296 (11 differ) |
+| **47 videos (6000 s)** | 0.873 | 0.915 / 0.826 / 0.814 | 300 (7 differ) |
+| 61 videos (9000 s) | 0.874 | 0.918 / 0.827 / 0.809 | 297 (10 differ) |
+| all 90 videos | 0.878 | 0.921 / 0.832 / 0.810 | 297 |
+
+Local check on cached features: the hand submission is identical to p1.0_v2.5_k2_4_sm0.7 (307 alarms, all equal);
+the lgbm one has 300 alarms, 295 shared with p0.75_v2.5_sm0.7_lgbm0.85.
