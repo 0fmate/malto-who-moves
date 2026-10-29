@@ -549,3 +549,20 @@ confirmed moving row outside vehicle boxes; a real driver stays inside and still
 - **Public LB (2026-10-30): submission_fix_p0.75_lgbm47 0.81167, submission_fix_p1.0_hand 0.80430**
   (before the fix: lgbm 0.79407, hand 0.79566). Both up by about +0.01 to +0.017, the same order as on CV, and the
   learned filter is now ahead on the LB too, as on CV. These two are the final selections.
+
+## Lower motion thresholds with the learned filter and the driver fix (2026-10-30)
+
+Idea: the learned filter may now remove the extra false alarms of a lower threshold (vehicle 2.0 lost with the hand
+gate alone). scripts/eval_lower_thresholds.py, hand gate AND out-of-fold model, t90 strict / lenient / folds / s45 / test:
+
+| person / others | P >= 0.8 | P >= 0.85 | P >= 0.9 |
+|---|---|---|---|
+| **0.75 / 2.5 (current)** | 0.882 | **0.883** (0.924/0.843/0.817, s45 0.893, test 311) | 0.882 |
+| 0.75 / 2.0 | 0.880 | 0.880 (0.919/0.848/0.804, s45 0.903) | 0.881 |
+| 0.75 / 1.5 | 0.876 | 0.876 | 0.877 |
+| 0.6 / 2.5 | 0.886 (0.931/0.845/0.811, s45 0.900, test 326) | 0.885 | 0.885 |
+| 0.6 / 2.0 | 0.883 | 0.884 | 0.886 (0.926/0.861/0.802, s45 0.899) |
+
+- Best gain +0.003, below the +0.005 rule, and fold 2 always loses. Lower vehicle thresholds help the small-target
+  clips (s45) but lose on t90: the model does not separate jittery parked cars well enough.
+- Dropped. Final pipeline unchanged (person 0.75 / others 2.5, P >= 0.85).
