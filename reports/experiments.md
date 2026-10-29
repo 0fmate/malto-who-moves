@@ -478,3 +478,24 @@ scripts/robustness_check.py on t90 (187 clips, **only 6 scenes**, 1712 targets),
 - Zoom: -0.018 from dropping 15 alarms: on the public part those were mostly real movers. Small test objects
   enlarged from few pixels are not found again by the detector, even when they are real. Dropped (it also failed
   the CV rule).
+
+## Pixel evidence of motion: background difference inside the box (2026-10-29)
+
+Idea: false alarms sit on real objects, so check the pixels instead of the track geometry. scripts/pixel_motion.py:
+background = temporal median of gray frames every 5 s within +-25 s (same clip only), foreground = |frame - bg| > 25
+after a 5x5 blur; per candidate up to 6 rows in [alarm - 2 s, alarm + 4 s]; fg_med = median share of box pixels in
+the foreground, ring = the same around the box. 19,936 rows, 6 min on CPU. Evaluation: scripts/eval_pixel_motion.py.
+
+- Hits: fg_med median 0.49 (10% quantile 0.26). False alarms split in two: a quarter have fg_med ~0 (truly static:
+  track switches, drifting boxes), but half have fg_med > 0.46, like hits (the pixels do change there).
+  Test alarms look like train hits (median 0.48, 10% quantile 0.23).
+- Gate on top of hand & model: drop fg_med < 0.02 -> 0.880 (+0.002), folds +0.005 / 0.000 / -0.002. Higher z hurts.
+- As model inputs (hand & model+pixels, P >= 0.85): 0.881 (+0.003), folds +0.004 / -0.001 / +0.011.
+- Fails the rule (>= +0.005 and no fold losing). Not submitted. For the report: on test the alarms already show real
+  pixel change, so the test precision gap is not "static objects seen as moving" in the pixel sense.
+
+Side check: 6 test videos (14% of test time) are 720x480 / 720x540 (train: one 720x480 video, no 720x540), a source
+barely seen in training; they get 22 of the 297 alarms, about the same rate as the other videos.
+
+Time budget found while planning the final notebook: tiled 2x2 runs at ~5 fps on 2 T4; test is 36.5k frames (~2 h),
+train 127k frames (~7 h). Re-detecting all train videos to fit the learned filter does not fit in 9 h together with test.
