@@ -520,3 +520,29 @@ the lgbm one has 300 alarms, 295 shared with p0.75_v2.5_sm0.7_lgbm0.85.
 Kaggle dry run (2x T4, 2026-10-30): test detection 118 min (36.5k frames, 2.6 fps per GPU), train subset 217 min
 (59.9k frames; shards unbalanced, 216 vs 171 min), tracks + features + model + submissions 5 min; **total 340 min**
 (limit 540). Same counts as the local run: hand 307 alarms (176 person / 131 vehicle), lgbm 300 (180 / 120).
+
+## Driver suppression fix: wait until the person is out of the vehicle box (2026-10-30)
+
+Where points are lost (t90, hand gate, person 1.0, strict): false alarms are mostly fa_background (140, weight 1;
+124 of them tracks on tiny unannotated objects, median 1.7% of the frame height, mean score 0.56), fa_static only 23.
+Missed targets 313 of 1717: no track 35, track moves < theta 189, candidate dropped by the gate 18, and **71 whose
+track moves >= theta but never alarms** (55 persons).
+
+Cause of most of those 71: alarms.alarm_rows dropped the whole track when, at the alarm row, the person box was covered
+>= 70% by a vehicle box. In parking lots that is a person walking behind a parked car. On t90 this dropped 388 tracks
+(person 1.0): GT role none 252, target 126, bonus 5, other 3, **driver 2**.
+Fix (`wait_out_of_vehicle`): a person row inside a vehicle box does not count as moving, so the alarm comes at the first
+confirmed moving row outside vehicle boxes; a real driver stays inside and still never alarms. scripts/eval_driver_fix.py:
+
+| | t90 strict | lenient | folds | s45 | test alarms |
+|---|---|---|---|---|---|
+| person 1.0 hand, old -> fix | 0.861 -> 0.867 | 0.881 -> 0.887 | 0.908/0.813/0.787 -> 0.912/0.831/0.786 | 0.885 -> 0.890 | 307 -> 319 |
+| person 0.75 hand, old -> fix | 0.868 -> 0.874 | 0.886 -> 0.893 | 0.916/0.820/0.797 -> 0.920/0.834/0.795 | 0.893 -> 0.896 | 317 -> 332 |
+| person 0.75 hand & model, old -> fix | 0.878 -> **0.883** | 0.899 -> 0.904 | 0.921/0.832/0.810 -> 0.924/0.843/0.817 | 0.893 -> 0.893 | 297 -> 311 |
+
+- t90 alarms added by the fix (person 0.75, hand): 81 = 43 hits, 3 wrong-class hits, 32 duplicates, 3 false alarms,
+  no driver. Test alarms added: 16, median box 5% of the frame height and mean score 0.89 (like train hits).
+- Kept (passes the rule for hand & model: +0.005, every fold up). In final_pipeline.py for both submissions.
+- Submissions (from final_pipeline.py on cached features, model on the 47-video subset):
+  submission_fix_p1.0_hand.csv (319 alarms; vs the 0.796 one: 19 added, 7 moved later) and
+  submission_fix_p0.75_lgbm47.csv (309 alarms).
