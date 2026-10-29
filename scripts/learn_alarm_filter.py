@@ -42,9 +42,10 @@ PARAMS = dict(n_estimators=200, learning_rate=0.05, num_leaves=7, min_child_samp
               subsample=0.8, subsample_freq=1, colsample_bytree=0.8, random_state=42, verbose=-1)
 
 
-def candidate_rows(feats: pd.DataFrame, theta_person: float, driver: float) -> pd.DataFrame:
+def candidate_rows(feats: pd.DataFrame, theta_person: float, driver: float,
+                   wait_out_of_vehicle: bool = False) -> pd.DataFrame:
     """Rule alarm rows (index kept) + whole-track measures + weak flag."""
-    rows = alarm_rows(feats, rule_moving(feats, sw.THETA, theta_person), sw.CONFIRM, driver)
+    rows = alarm_rows(feats, rule_moving(feats, sw.THETA, theta_person), sw.CONFIRM, driver, wait_out_of_vehicle)
     alarmed = feats.merge(rows[KEY + ["t"]].rename(columns={"t": "t_alarm"}), on=KEY)
     m = []
     for (vid, tid), g in alarmed.sort_values(KEY + ["t"], kind="stable").groupby(KEY, sort=False):

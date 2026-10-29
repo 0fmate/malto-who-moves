@@ -36,8 +36,14 @@ def first_confirmed(feats: pd.DataFrame, moving: pd.Series, confirm_rows: int) -
 
 
 def alarm_rows(feats: pd.DataFrame, moving: pd.Series, confirm_rows: int = 1,
-               driver_inside: float = 0.7) -> pd.DataFrame:
-    """The feature rows where alarms would be raised: one per moving track, drivers removed."""
+               driver_inside: float = 0.7, wait_out_of_vehicle: bool = False) -> pd.DataFrame:
+    """The feature rows where alarms would be raised: one per moving track, drivers removed.
+
+    wait_out_of_vehicle: a person row covered by a vehicle box does not count as moving, so a person walking behind
+    a parked car alarms once out of the car box instead of never. A real driver stays inside and still never alarms.
+    """
+    if wait_out_of_vehicle:
+        moving = moving & ~((feats["class"] == "person") & (feats["inside_vehicle"] >= driver_inside))
     rows = first_confirmed(feats, moving, confirm_rows)
     return rows[~((rows["class"] == "person") & (rows["inside_vehicle"] >= driver_inside))]
 
