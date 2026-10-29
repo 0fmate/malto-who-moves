@@ -600,3 +600,5 @@ scripts/eval_confirm_robust.py, paired on the same clips, gain vs confirm 5 / P 
   is the fold-2 scene; the bootstrap does not depend on it.
 - final_pipeline.py writes it as submission_final_lgbm_c2.csv (= submission.csv); lgbm (confirm 5) and hand are
   unchanged, byte-identical to the submitted files. Local file: submission_fix_p0.75_c2_p0.9_lgbm47.csv (333 alarms).
+- **Public LB: submission_fix_p0.75_c2_p0.9_lgbm47 0.83714** (confirm 5 version 0.81167: +0.025, CV said +0.009;
+  the extra is public-subset noise, a few public alarms). Final selections: lgbm_c2 and lgbm (confirm 5).
