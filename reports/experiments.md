@@ -516,3 +516,7 @@ Subset = train videos sorted by id up to 6000 s (47 videos, 5995 s), so that det
 
 Local check on cached features: the hand submission is identical to p1.0_v2.5_k2_4_sm0.7 (307 alarms, all equal);
 the lgbm one has 300 alarms, 295 shared with p0.75_v2.5_sm0.7_lgbm0.85.
+
+Kaggle dry run (2x T4, 2026-10-30): test detection 118 min (36.5k frames, 2.6 fps per GPU), train subset 217 min
+(59.9k frames; shards unbalanced, 216 vs 171 min), tracks + features + model + submissions 5 min; **total 340 min**
+(limit 540). Same counts as the local run: hand 307 alarms (176 person / 131 vehicle), lgbm 300 (180 / 120).
