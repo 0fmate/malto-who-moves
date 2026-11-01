@@ -1,7 +1,8 @@
 # Who Moves? — MALTO Recruitment Challenge
 
 Pipeline: detect → track → decide who moves → one alarm per mover.
-Context, rules and conventions for working with Claude Code are in `CLAUDE.md`; the data schema is in `DATA.md`.
+Data schema: `DATA.md`. Write-up: `reports/report.md`. Experiment log: `reports/experiments.md`.
+The final submission is reproduced on Kaggle by `scripts/final_pipeline.py` (see its docstring).
 
 ## Setup
 
@@ -13,7 +14,27 @@ Context, rules and conventions for working with Claude Code are in `CLAUDE.md`; 
 
 ## Layout
 
-See `CLAUDE.md`, section "Project layout".
+```
+config.yaml            paths and parameters (single source of truth)
+DATA.md                data schema and what the videos look like
+src/whomoves/          the package
+  config.py            load config.yaml (+ env override)
+  io.py                load CSVs, iterate video frames
+  metric.py            local re-implementation of the competition scorer
+  validation.py        scene-grouped folds, test-like clips
+  detect.py            pretrained detector (full frame + tiles), COCO -> {person, vehicle, animal}
+  track.py             multi-object tracker (simplified ByteTrack)
+  match.py             match predicted tracks to ground-truth tracks
+  features.py          motion features per track row
+  motion_model.py      model inputs
+  motion_zoom.py       detector on zoomed crops (tried, not in the final pipeline)
+  alarms.py            turn tracks into alarms (one per mover)
+  submission.py        write and validate submission.csv
+  viz.py               overlays and figures
+scripts/               command-line entry points; final_pipeline.py builds the final submissions
+reports/               write-up, experiment log, concrete cases
+tests/                 tests (the metric scores train_alarms.csv as 1.0)
+```
 
 ## After the competition
 

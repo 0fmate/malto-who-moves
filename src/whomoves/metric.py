@@ -1,4 +1,4 @@
-"""Local re-implementation of the competition scorer (see CLAUDE.md, "How the score works").
+"""Local re-implementation of the competition scorer (see the Evaluation page of the competition).
 
 Rules (from the Evaluation page):
 - Targets are the rows of train_alarms.csv: role "target" (counted in recall) and "bonus"
