@@ -32,6 +32,5 @@ venv/
 # Secrets and local settings
 kaggle.json
 .env
-.claude/settings.local.json
 
 # Notebook outputs can contain video frames: clear outputs before committing

@@ -1,4 +1,4 @@
-"""Build data_sample/: small CSV excerpts + SUMMARY.md, so Claude never reads the raw data.
+"""Build data_sample/: small CSV excerpts + SUMMARY.md, so the raw data never has to be opened by hand.
 
 Usage: python scripts/make_sample.py [--rows-per-role 10]
 """
