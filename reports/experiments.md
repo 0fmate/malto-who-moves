@@ -630,3 +630,11 @@ passes. Whole-track measures are the same at every row, only row features and `h
 - Lesson for the report: loosening the rule helps only where it lets in candidates the model can judge
   (short fragments of real movers: confirm 2); not where it lets in what the model cannot tell apart (lower theta:
   jittery parked cars; no hand gate: weak low-score test tracks) or where the model has nothing new to see.
+
+## Final reproduction run on Kaggle (2026-10-31)
+
+Public repository, code pinned at 08b2ffc, 2x T4, environment pinned (torch 2.11.0, torchvision 0.26.0, lightgbm
+4.6.0, numpy 2.1.3, pandas 2.3.3). Test detection 129 min, train subset 219 min more, tracks + features + models
+5 min, **total 352 min** (limit 540). Same counts as the local run and the submitted files: hand 369 candidates /
+319 alarms, lgbm trained on 1457 candidates (145 false) -> 309 alarms, lgbm_c2 trained on 1680 (168 false) ->
+458 candidates / 333 alarms.
