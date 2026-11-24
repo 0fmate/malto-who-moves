@@ -1,7 +1,7 @@
 # DATA.md — competition data
 
-Copied from the Kaggle Data and Evaluation pages. Raw files live in `data_dir` (see `config.yaml`).
-Real example rows are in `data_sample/` (run `python scripts/make_sample.py`).
+Summary of the Kaggle Data and Evaluation pages, with statistics computed on the training data. The data itself is
+not included: download it from the competition page and set `data_dir` in `config.yaml`.
 
 ## Files
 
@@ -45,7 +45,7 @@ All files sit flat in `data_dir` (no train/ and test/ subfolders). Train `video_
 - No audio. Test videos are 1–3 minute cuts and may start while something is already moving.
 - Mirrored videos are valid scenes. **Test scenes do not appear in training.**
 
-## Key facts from data_sample/SUMMARY.md
+## Key facts (training data)
 
 - Train is almost all VIRAT: 87 of 90 videos (196 of 218 min); MEVA 2 videos, CDnet 1 (720x480).
   Test has 6 low-resolution videos (3 at 720x480, 3 at 720x540; 720x540 never appears in train).

@@ -1,5 +1,4 @@
-# Pin exact versions with `pip freeze > requirements.lock` once the environment works,
-# and use the same versions in the final Kaggle notebook.
+# Final Kaggle run: torch 2.11.0, torchvision 0.26.0, lightgbm 4.6.0, numpy 2.1.3, pandas 2.3.3.
 numpy
 pandas
 pyarrow

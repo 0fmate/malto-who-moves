@@ -1,6 +1,6 @@
 # Who Moves? — write-up
 
-**Result:** public LB 0.837 (organizers' naive baseline: 0.603). Reproduction notebook: REPRODUCTION_NOTEBOOK_LINK ·
+**Result:** public LB 0.837 (organizers' naive baseline: 0.603). Private LB 0.828. Reproduction notebook: https://www.kaggle.com/code/ofmate01/who-moves-detections ·
 code: https://github.com/0fmate/malto-who-moves (pinned at commit `08b2ffc`).
 
 ## 1. Idea
