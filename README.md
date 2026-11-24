@@ -34,7 +34,7 @@ flowchart LR
     T --> C["candidate rule<br/>moved ≥ θ box heights,<br/>2 detections in a row"]
     C --> G["hand gate<br/>weak motion AND<br/>low confidence → drop"]
     G --> M["LightGBM filter<br/>P(real mover) ≥ 0.9"]
-    M --> A["one alarm per track"]
+    M --> A["one alarm<br/>per track"]
 ```
 
 1. **Detection.** torchvision Faster R-CNN ResNet-50 FPN v2 (COCO weights) on the full frame and on four enlarged,
