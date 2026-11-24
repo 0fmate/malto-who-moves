@@ -29,11 +29,11 @@ reproduction: [Kaggle notebook](https://www.kaggle.com/code/ofmate01/who-moves-d
 
 ```mermaid
 flowchart LR
-    V[video] --> D["Faster R-CNN v2<br/>full frame + 2x2 tiles"]
-    D --> T["tracker<br/>(simplified ByteTrack)"]
-    T --> C["candidate rule<br/>moved ≥ θ box heights,<br/>2 detections in a row"]
-    C --> G["hand gate<br/>weak motion AND<br/>low confidence → drop"]
-    G --> M["LightGBM filter<br/>P(real mover) ≥ 0.9"]
+    V[video] --> D["Faster R-CNN<br/>frame + tiles"]
+    D --> T["tracker<br/>(ByteTrack)"]
+    T --> C["candidate:<br/>moved ≥ θ<br/>box heights"]
+    C --> G["hand gate:<br/>weak + low<br/>score → drop"]
+    G --> M["LightGBM<br/>P ≥ 0.9"]
     M --> A["one alarm<br/>per track"]
 ```
 
